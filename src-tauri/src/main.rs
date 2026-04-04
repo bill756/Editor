@@ -6,6 +6,8 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
+use lofty::prelude::{ItemKey, *};
+use lofty::file::AudioFile;
 use serde::Serialize;
 
 fn now_millis() -> u128 {
@@ -76,7 +78,7 @@ fn get_ffmpeg_cmd() -> Option<PathBuf> {
     Some(PathBuf::from(exe_name))
 }
 
-fn get_ffprobe_cmd() -> Option<PathBuf> {
+fn _get_ffprobe_cmd() -> Option<PathBuf> {
     let exe_name = if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" };
     if let Ok(custom) = std::env::var("FFPROBE_PATH") {
         let p = PathBuf::from(custom);
@@ -115,12 +117,14 @@ fn get_ffprobe_cmd() -> Option<PathBuf> {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct AudioTagInfo {
     title: String,
     artist: String,
     album: String,
     duration_sec: f64,
     cover_data_url: String,
+    lyrics: String,
 }
 
 fn parse_time_secs(raw: &str) -> Option<f64> {
@@ -145,133 +149,211 @@ fn parse_time_secs(raw: &str) -> Option<f64> {
     None
 }
 
-fn compute_clip_args(start_sec: String, end_sec: String) -> Result<Vec<String>, String> {
-    let start = parse_time_secs(&start_sec).unwrap_or(0.0).max(0.0);
-    let end = parse_time_secs(&end_sec).unwrap_or(0.0).max(0.0);
-    if end > 0.0 && end <= start {
-        return Err("结束时间必须大于开始时间".to_string());
-    }
-    let mut args = Vec::new();
-    if start > 0.0 {
-        args.push("-ss".to_string());
-        args.push(format!("{start:.3}"));
-    }
-    if end > 0.0 {
-        args.push("-t".to_string());
-        args.push(format!("{:.3}", end - start));
-    } else {
-        args.push("-shortest".to_string());
-    }
-    Ok(args)
-}
-
 #[tauri::command]
 fn inspect_audio_tags(audio_base64: String, audio_extension: String) -> Result<AudioTagInfo, String> {
     let audio_bytes = base64::engine::general_purpose::STANDARD
-        .decode(audio_base64)
+        .decode(&audio_base64)
         .map_err(|_| "音频解码失败".to_string())?;
+
     let work_dir = std::env::temp_dir().join(format!("poem_audio_meta_{}", now_millis()));
-    fs::create_dir_all(&work_dir).map_err(|e| format!("创建临时目录失败: {e}"))?;
+    fs::create_dir_all(&work_dir).map_err(|e| format!("创建临时目录失败: {}", e))?;
     let audio_ext = sanitize_audio_ext(&audio_extension);
-    let audio_path = work_dir.join(format!("meta.{audio_ext}"));
-    fs::write(&audio_path, audio_bytes).map_err(|e| format!("写入音频失败: {e}"))?;
+    let audio_path = work_dir.join(format!("meta.{}", audio_ext));
+    fs::write(&audio_path, &audio_bytes).map_err(|e| format!("写入音频失败: {}", e))?;
 
-    let ffprobe = get_ffprobe_cmd().ok_or_else(|| "未找到 ffprobe".to_string())?;
-    let probe = Command::new(ffprobe)
-        .arg("-v")
-        .arg("error")
-        .arg("-show_entries")
-        .arg("format_tags=title,artist,album:format=duration")
-        .arg("-of")
-        .arg("default=nw=1:nk=0")
-        .arg(&audio_path)
-        .output()
-        .map_err(|e| format!("读取音频标签失败: {e}"))?;
+    let mut file = std::fs::File::open(&audio_path).map_err(|e| format!("打开音频文件失败: {}", e))?;
+    let tagged_file = lofty::read_from(&mut file)
+        .map_err(|e| format!("读取音频标签失败: {}", e))?;
 
-    let text = String::from_utf8_lossy(&probe.stdout).to_string();
+    let _ = fs::remove_dir_all(&work_dir);
+
+    let properties = tagged_file.properties();
+    let duration_sec = properties.duration().as_secs_f64();
+
     let mut title = String::new();
     let mut artist = String::new();
     let mut album = String::new();
-    let mut duration_sec = 0.0f64;
-    for line in text.lines() {
-        if let Some(v) = line.strip_prefix("TAG:title=") {
-            title = v.trim().to_string();
-        } else if let Some(v) = line.strip_prefix("TAG:artist=") {
-            artist = v.trim().to_string();
-        } else if let Some(v) = line.strip_prefix("TAG:album=") {
-            album = v.trim().to_string();
-        } else if let Some(v) = line.strip_prefix("duration=") {
-            duration_sec = v.trim().parse::<f64>().unwrap_or(0.0);
-        }
-    }
-
     let mut cover_data_url = String::new();
-    let ffmpeg = get_ffmpeg_cmd().ok_or_else(|| "未找到 FFmpeg".to_string())?;
-    let cover_path = work_dir.join("cover.jpg");
-    let cover_result = Command::new(ffmpeg)
-        .arg("-y")
-        .arg("-loglevel")
-        .arg("error")
-        .arg("-i")
-        .arg(&audio_path)
-        .arg("-map")
-        .arg("0:v")
-        .arg("-frames:v")
-        .arg("1")
-        .arg(&cover_path)
-        .output();
-    if cover_result.is_ok() && cover_path.exists() {
-        if let Ok(bytes) = fs::read(&cover_path) {
-            let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
-            cover_data_url = format!("data:image/jpeg;base64,{b64}");
+    let mut lyrics = String::new();
+
+    // 遍历所有标签 (ID3v2, ID3v1, Vorbis, etc.)
+    for tag in tagged_file.tags() {
+        // 基本信息
+        if title.is_empty() {
+            title = tag.title().map(|s| s.to_string()).unwrap_or_default();
+        }
+        if artist.is_empty() {
+            artist = tag.artist().map(|s| s.to_string()).unwrap_or_default();
+        }
+        if album.is_empty() {
+            album = tag.album().map(|s| s.to_string()).unwrap_or_default();
+        }
+
+        // 收集所有图片 (遍历每个 tag 的所有图片)
+        for picture in tag.pictures() {
+            if cover_data_url.is_empty() {
+                let mime_str = picture.mime_type()
+                    .map(|m| m.as_str())
+                    .unwrap_or("image/jpeg");
+                let base64_data = base64::engine::general_purpose::STANDARD.encode(picture.data());
+                cover_data_url = format!("data:{};base64,{}", mime_str, base64_data);
+            }
+        }
+
+        // 尝试读取歌词
+        if lyrics.is_empty() {
+            if let Some(val) = tag.get_string(&ItemKey::Lyrics) {
+                lyrics = val.to_string();
+            }
+        }
+        if lyrics.is_empty() {
+            if let Some(val) = tag.get_string(&ItemKey::Comment) {
+                lyrics = val.to_string();
+            }
         }
     }
 
-    let _ = fs::remove_dir_all(&work_dir);
     Ok(AudioTagInfo {
         title,
         artist,
         album,
         duration_sec,
         cover_data_url,
+        lyrics,
     })
 }
 
 #[tauri::command]
 fn export_video_ffmpeg(
-    image_data_urls: Vec<String>,
+    _poem_card_png: String,
+    _poem_card_w: u32,
+    _poem_card_h: u32,
+    _media_area_y: i32,
+    _media_area_h: i32,
+    media_items_json: String,
     audio_base64: String,
     audio_extension: String,
     title: String,
     start_sec: String,
     end_sec: String,
+    _total_duration: f64,
+    frame_data_urls: Vec<String>,
+    fps: u32,
 ) -> Result<String, String> {
-    if image_data_urls.is_empty() {
-        return Err("没有图片帧数据".to_string());
-    }
-
-    let audio_bytes = base64::engine::general_purpose::STANDARD
-        .decode(&audio_base64)
-        .map_err(|_| "音频解码失败".to_string())?;
+    let _media_items: Vec<serde_json::Value> = serde_json::from_str(&media_items_json)
+        .map_err(|e| format!("媒体数据解析失败: {e}"))?;
 
     let work_dir = std::env::temp_dir().join(format!("poem_video_{}", now_millis()));
     fs::create_dir_all(&work_dir).map_err(|e| format!("创建临时目录失败: {e}"))?;
 
-    let audio_ext = sanitize_audio_ext(&audio_extension);
-    let audio_path = work_dir.join(format!("audio.{audio_ext}"));
-    fs::write(&audio_path, &audio_bytes).map_err(|e| format!("写入音频失败: {e}"))?;
+    let has_audio = !audio_base64.is_empty();
+    let audio_path: Option<PathBuf> = if has_audio {
+        let audio_bytes = base64::engine::general_purpose::STANDARD
+            .decode(&audio_base64)
+            .map_err(|_| "音频解码失败".to_string())?;
+        let audio_ext = sanitize_audio_ext(&audio_extension);
+        let path = work_dir.join(format!("audio.{audio_ext}"));
+        fs::write(&path, &audio_bytes).map_err(|e| format!("写入音频失败: {e}"))?;
+        Some(path)
+    } else {
+        None
+    };
 
-    // Write each frame as a separate PNG file
-    for (i, data_url) in image_data_urls.iter().enumerate() {
-        let image_b64 = data_url
+    let final_path = work_dir.join("output.mp4");
+
+    if frame_data_urls.is_empty() {
+        return Err("没有帧数据".to_string());
+    }
+
+    for (i, frame_data_url) in frame_data_urls.iter().enumerate() {
+        let frame_b64 = frame_data_url
             .split_once(',')
-            .map(|(_, b64)| b64.to_string())
-            .ok_or_else(|| "图片数据无效".to_string())?;
-        let image_bytes = base64::engine::general_purpose::STANDARD
-            .decode(&image_b64)
-            .map_err(|_| "图片解码失败".to_string())?;
-        let image_path = work_dir.join(format!("frame{:03}.png", i));
-        fs::write(&image_path, &image_bytes).map_err(|e| format!("写入图片失败: {e}"))?;
+            .map(|(_, b64)| b64)
+            .unwrap_or(frame_data_url);
+        let frame_bytes = base64::engine::general_purpose::STANDARD
+            .decode(frame_b64)
+            .map_err(|_| format!("帧 {} 解码失败", i))?;
+        let frame_path = work_dir.join(format!("frame{:06}.png", i));
+        fs::write(&frame_path, &frame_bytes)
+            .map_err(|e| format!("写入帧 {} 失败: {}", i, e))?;
+    }
+
+    let framerate_str = fps.to_string();
+    let frame_pattern = work_dir.join("frame%06d.png");
+    let frame_pattern_str = frame_pattern.to_string_lossy().to_string();
+
+    run_ffmpeg(&[
+        "-y".to_string(),
+        "-loglevel".to_string(),
+        "error".to_string(),
+        "-framerate".to_string(),
+        framerate_str,
+        "-i".to_string(),
+        frame_pattern_str,
+        "-vf".to_string(),
+        format!("fps={}", 30),
+        "-c:v".to_string(),
+        "libx264".to_string(),
+        "-crf".to_string(),
+        "18".to_string(),
+        "-preset".to_string(),
+        "fast".to_string(),
+        "-pix_fmt".to_string(),
+        "yuv420p".to_string(),
+        final_path.to_string_lossy().to_string(),
+    ])?;
+
+    if has_audio {
+        let audio_path = audio_path.unwrap();
+        let start = parse_time_secs(&start_sec).unwrap_or(0.0).max(0.0);
+        let end = parse_time_secs(&end_sec).unwrap_or(0.0);
+
+        let audio_trim_path = work_dir.join("audio_trim.aac");
+        let mut audio_args = vec![
+            "-y".to_string(),
+            "-loglevel".to_string(),
+            "error".to_string(),
+            "-i".to_string(),
+            audio_path.to_string_lossy().to_string(),
+        ];
+        if start > 0.0 {
+            audio_args.push("-ss".to_string());
+            audio_args.push(format!("{:.3}", start));
+        }
+        if end > 0.0 && end > start {
+            audio_args.push("-t".to_string());
+            audio_args.push(format!("{:.3}", end - start));
+        }
+        audio_args.extend([
+            "-c:a".to_string(),
+            "aac".to_string(),
+            "-b:a".to_string(),
+            "192k".to_string(),
+            audio_trim_path.to_string_lossy().to_string(),
+        ]);
+        run_ffmpeg(&audio_args)?;
+
+        let final_with_audio = work_dir.join("output_with_audio.mp4");
+        run_ffmpeg(&[
+            "-y".to_string(),
+            "-loglevel".to_string(),
+            "error".to_string(),
+            "-i".to_string(),
+            final_path.to_string_lossy().to_string(),
+            "-i".to_string(),
+            audio_trim_path.to_string_lossy().to_string(),
+            "-c".to_string(),
+            "copy".to_string(),
+            "-map".to_string(),
+            "0:v".to_string(),
+            "-map".to_string(),
+            "1:a".to_string(),
+            "-shortest".to_string(),
+            final_with_audio.to_string_lossy().to_string(),
+        ])?;
+
+        fs::rename(&final_with_audio, &final_path)
+            .map_err(|e| format!("重命名输出文件失败: {e}"))?;
     }
 
     let out_dir = dirs::download_dir()
@@ -282,64 +364,24 @@ fn export_video_ffmpeg(
         fs::create_dir_all(&out_dir).map_err(|e| format!("创建导出目录失败: {e}"))?;
     }
     let out_name = format!("古诗视频_{}_{}.mp4", sanitize_filename(&title), now_millis());
-    let out_path = out_dir.join(out_name);
-
-    let ffmpeg = get_ffmpeg_cmd().ok_or_else(|| "未找到 FFmpeg".to_string())?;
-    let build_args = |audio_codec: &str| -> Result<Vec<String>, String> {
-        let mut args = vec![
-            "-y".to_string(),
-            "-loglevel".to_string(),
-            "error".to_string(),
-            "-framerate".to_string(),
-            "1".to_string(),
-            "-i".to_string(),
-            work_dir.join("frame%03d.png").to_string_lossy().to_string(),
-            "-i".to_string(),
-            audio_path.to_string_lossy().to_string(),
-            "-c:v".to_string(),
-            "libx264".to_string(),
-            "-preset".to_string(),
-            "veryslow".to_string(),
-            "-crf".to_string(),
-            "6".to_string(),
-            "-vf".to_string(),
-            "scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p".to_string(),
-            "-c:a".to_string(),
-            audio_codec.to_string(),
-            "-b:a".to_string(),
-            "320k".to_string(),
-            "-movflags".to_string(),
-            "+faststart".to_string(),
-        ];
-        let clip_args = compute_clip_args(start_sec.clone(), end_sec.clone())?;
-        args.extend(clip_args);
-        args.push(out_path.to_string_lossy().to_string());
-        Ok(args)
-    };
-
-    let mut last_error = String::new();
-    for codec in ["aac", "libmp3lame"] {
-        let args = build_args(codec)?;
-        let output = Command::new(&ffmpeg)
-            .args(&args)
-            .output()
-            .map_err(|e| format!("FFmpeg 执行失败，请确认已安装并加入 PATH: {e}"))?;
-        if output.status.success() {
-            let _ = fs::remove_dir_all(&work_dir);
-            return Ok(out_path.to_string_lossy().to_string());
-        }
-        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        let out = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        last_error = format!(
-            "codec={codec}, code={:?}, stderr={}, stdout={}",
-            output.status.code(),
-            if err.is_empty() { "<empty>" } else { &err },
-            if out.is_empty() { "<empty>" } else { &out }
-        );
-    }
+    let out_path = out_dir.join(&out_name);
+    fs::copy(&final_path, &out_path).map_err(|e| format!("复制输出文件失败: {e}"))?;
 
     let _ = fs::remove_dir_all(&work_dir);
-    Err(format!("FFmpeg 合成失败: {last_error}"))
+    Ok(out_path.to_string_lossy().to_string())
+}
+
+fn run_ffmpeg(args: &[String]) -> Result<String, String> {
+    let ffmpeg = get_ffmpeg_cmd().ok_or_else(|| "未找到 FFmpeg".to_string())?;
+    let output = Command::new(&ffmpeg)
+        .args(args)
+        .output()
+        .map_err(|e| format!("FFmpeg 执行失败: {e}"))?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
 }
 
 fn main() {

@@ -32,8 +32,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "C:/Users/33758/Desktop/AICode/Editor/src-tauri/target/release/ffmpeg.exe": "./ffmpeg.exe"
-    }
+    "resources": {}
   }
 }

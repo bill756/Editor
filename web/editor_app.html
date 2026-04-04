@@ -1294,6 +1294,173 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* Media Section */
+        .media-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 12px;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 4px;
+            background: rgba(0,0,0,0.02);
+        }
+
+        .media-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .media-section-title {
+            font-size: 12px;
+            color: var(--ink-light);
+            letter-spacing: 0.1em;
+        }
+
+        .media-section-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .media-upload-btn {
+            font-family: "Noto Serif SC", serif;
+            font-size: 11px;
+            color: var(--ink-light);
+            border: 1px solid rgba(0,0,0,0.12);
+            padding: 3px 10px;
+            border-radius: 2px;
+            cursor: pointer;
+            letter-spacing: 0.06em;
+            background: rgba(0,0,0,0.02);
+            transition: all 0.2s;
+            position: relative;
+        }
+        .media-upload-btn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+        .media-upload-btn input[type="file"] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer;
+        }
+
+        .media-upload-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .media-item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .media-item-list::-webkit-scrollbar { width: 3px; }
+        .media-item-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+
+        .media-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 4px;
+        }
+
+        .media-item-thumb {
+            width: 36px;
+            height: 36px;
+            object-fit: cover;
+            border-radius: 3px;
+            background: rgba(0,0,0,0.08);
+            flex-shrink: 0;
+        }
+
+        .media-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .media-item-name {
+            font-size: 11px;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 140px;
+        }
+
+        .media-item-meta {
+            font-size: 10px;
+            color: var(--ink-light);
+            margin-top: 1px;
+        }
+
+        .media-item-duration-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .media-item-duration-input {
+            width: 48px;
+            font-family: "Noto Serif SC", serif;
+            font-size: 11px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 2px;
+            padding: 2px 5px;
+            text-align: center;
+        }
+        .media-item-duration-input:focus { border-color: rgba(0,0,0,0.25); }
+
+        .media-item-duration-unit {
+            font-size: 10px;
+            color: var(--ink-light);
+        }
+
+        .media-item-remove {
+            font-size: 16px;
+            color: rgba(0,0,0,0.2);
+            cursor: pointer;
+            padding: 2px 6px;
+            flex-shrink: 0;
+            transition: color 0.2s;
+        }
+        .media-item-remove:hover { color: var(--seal-red); }
+
+        .media-item-actions {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .media-item-move-btn {
+            font-size: 12px;
+            color: rgba(0,0,0,0.2);
+            cursor: pointer;
+            padding: 2px 4px;
+            transition: color 0.2s;
+        }
+        .media-item-move-btn:hover { color: var(--ink); }
+
+        .media-empty-hint {
+            font-size: 11px;
+            color: var(--ink-light);
+            text-align: center;
+            padding: 8px;
+            letter-spacing: 0.06em;
+        }
+
+        .media-total-duration {
+            font-size: 11px;
+            color: var(--ink-light);
+            text-align: right;
+            letter-spacing: 0.06em;
+            padding-top: 4px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
     </style>
 </head>
 <body>
@@ -1487,6 +1654,22 @@
                         <button class="font-clear-btn" id="fontClearSeal">重置</button>
                     </div>
                 </div>
+                <div class="media-section" id="mediaSection">
+                    <div class="media-section-header">
+                        <span class="media-section-title">媒体内容</span>
+                        <div class="media-section-actions">
+                            <label class="media-upload-btn">添加图片
+                                <input type="file" id="mediaAddImage" accept="image/*" multiple />
+                            </label>
+                        </div>
+                    </div>
+                    <div class="media-upload-row">
+                        <div class="media-item-list" id="mediaItemList">
+                            <div class="media-empty-hint">暂无媒体内容，可上传图片</div>
+                        </div>
+                    </div>
+                    <div class="media-total-duration" id="mediaTotalDuration"></div>
+                </div>
                 <div class="editor-actions">
                     <button class="editor-btn" id="copyBtn">复制图片</button>
                     <button class="editor-btn" id="exportWebmBtn">导出视频</button>
@@ -1552,7 +1735,7 @@
             ctx.fillText(`${clipped}…`, x, y);
         }
 
-        function drawCard(canvasEl, { title, author, lines, sealChar, fontSize, lineHeight, lyricsElapsed }) {
+        function drawCard(canvasEl, { title, author, lines, sealChar, fontSize, lineHeight, lyricsElapsed, mediaElapsed }) {
             const scale = 2;
             const fontStacks = getCardFontStacks();
 
@@ -1580,8 +1763,10 @@
 
             const totalLineCount = lines.length;
             const hasMetaBanner = !!(musicState.file && musicState.meta);
-            const bannerWrapH = hasMetaBanner ? 74 : 0;
-            const cardH = 130 + totalLineCount * lineHeight + 50 + bannerWrapH;
+            const hasMediaArea = mediaState.items.length > 0;
+            const mediaAreaH = hasMediaArea ? 180 : 0;
+            const bannerWrapH = hasMetaBanner ? 79 : 0;
+            const cardH = 130 + totalLineCount * lineHeight + 54 + mediaAreaH + bannerWrapH;
 
             canvasEl.width = actualCardW * scale;
             canvasEl.height = cardH * scale;
@@ -1689,15 +1874,75 @@
                 }
             });
 
+            // Media area (between poem and music banner)
+            if (hasMediaArea) {
+                const mediaY = 130 + totalLineCount * lineHeight + 16;
+                const mediaX = 20;
+                const mediaW = actualCardW - 40;
+                const mediaH = mediaAreaH - 12;
+                const mediaInnerH = mediaH - 8;
+
+                // Background
+                ctx.fillStyle = 'rgba(0,0,0,0.03)';
+                roundRect(ctx, mediaX, mediaY, mediaW, mediaH, 4);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+                ctx.lineWidth = 1;
+                roundRect(ctx, mediaX + 0.5, mediaY + 0.5, mediaW - 1, mediaH - 1, 4);
+                ctx.stroke();
+
+                // Determine which media to show
+                const elapsed = mediaElapsed !== undefined ? mediaElapsed : 0;
+                const mediaInfo = getMediaItemAtTime(elapsed);
+
+                if (mediaInfo) {
+                    const { item, localElapsed } = mediaInfo;
+                    const itemDur = getMediaItemDuration(item);
+
+                    // Draw image scaled to fit
+                    const img = item.thumb;
+                    if (img && img.complete && img.naturalWidth > 0) {
+                        const imgAspect = img.naturalWidth / img.naturalHeight;
+                        const boxAspect = mediaW / mediaInnerH;
+                        let drawW, drawH, drawX, drawY;
+                        if (imgAspect > boxAspect) {
+                            drawW = mediaW - 16;
+                            drawH = drawW / imgAspect;
+                        } else {
+                            drawH = mediaInnerH - 8;
+                            drawW = drawH * imgAspect;
+                        }
+                        drawX = mediaX + (mediaW - drawW) / 2;
+                        drawY = mediaY + (mediaH - drawH) / 2;
+
+                        ctx.save();
+                        roundRect(ctx, drawX, drawY, drawW, drawH, 3);
+                        ctx.clip();
+                        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+                        ctx.restore();
+                    } else {
+                        // Placeholder while loading
+                        ctx.fillStyle = 'rgba(0,0,0,0.08)';
+                        roundRect(ctx, mediaX + 8, mediaY + 8, mediaW - 16, mediaInnerH, 3);
+                        ctx.fill();
+                        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                        ctx.font = `13px ${fontStacks.author}`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(`[图片: ${item.name}]`, mediaX + mediaW / 2, mediaY + mediaH / 2);
+                    }
+                }
+            }
+
             if (hasMetaBanner) {
                 const meta = musicState.meta || {};
                 const bannerX = 20;
-                const bannerY = 130 + totalLineCount * lineHeight + 16;
+                const bannerY = 130 + totalLineCount * lineHeight + 16 + (hasMediaArea ? mediaAreaH : 0);
                 const bannerW = actualCardW - 40;
-                const bannerH = 50;
+                const bannerH = 54;
                 const coverSize = 34;
                 const coverX = bannerX + 8;
-                const coverY = bannerY + 8;
+                const coverY = bannerY + (bannerH - coverSize) / 2;
                 const textStartX = coverX + coverSize + 8;
                 const lyricsAreaWidth = 140;
                 const textMaxW = bannerX + bannerW - 12 - lyricsAreaWidth - textStartX - 8;
@@ -1722,40 +1967,50 @@
                 }
 
                 const titleText = musicState.bannerShowTitle ? (meta.title || (musicState.file?.name || '未知标题').replace(/\.[^.]+$/, '')) : '';
-                let subParts = [];
-                if (musicState.bannerShowArtist) subParts.push(meta.artist || '未知作者');
-                if (musicState.bannerShowAlbum && meta.album) subParts.push(meta.album);
+                const authorText = musicState.bannerShowArtist ? (meta.artist || '未知作者') : '';
+                let albumParts = [];
+                if (musicState.bannerShowAlbum && meta.album) albumParts.push(meta.album);
                 if (musicState.bannerShowClipRange) {
                     const clip = getClipRange();
-                    if (clip && clip.endSec > 0) subParts.push(`${clip.startText}/${clip.endText}`);
+                    if (clip && clip.endSec > 0) albumParts.push(`${clip.startText}/${clip.endText}`);
                 }
-                const subText = subParts.join(' · ');
+                const albumText = albumParts.join(' · ');
+
+                // 左侧上留6，6-18标题(居中12)，21-33作者(居中27)，36-48专辑(居中42)，下留6
+                const titleY = bannerY + 12;
+                const authorY = bannerY + 27;
+                const albumY = bannerY + 42;
 
                 ctx.fillStyle = '#1a1a1a';
                 ctx.font = `12px ${fontStacks.author}`;
                 ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
+                ctx.textBaseline = 'middle';
                 if (musicState.bannerShowTitle) {
-                    drawTextWithEllipsis(ctx, titleText, textStartX, bannerY + 10, textMaxW);
+                    drawTextWithEllipsis(ctx, titleText, textStartX, titleY, textMaxW);
                 }
 
                 ctx.fillStyle = '#5a5a5a';
                 ctx.font = `11px ${fontStacks.author}`;
-                drawTextWithEllipsis(ctx, subText, textStartX, bannerY + 28, textMaxW);
+                drawTextWithEllipsis(ctx, authorText, textStartX, authorY, textMaxW);
 
-                // Lyrics inside banner, right-aligned and vertically centered
+                if (albumText) {
+                    drawTextWithEllipsis(ctx, albumText, textStartX, albumY, textMaxW);
+                }
+
+                // 右侧上留9，9-25歌词第1行(居中17)，29-45歌词第2行(居中37)，下留9，行距4px
                 if (musicState.showLyrics && musicState.parsedLyrics.length > 0) {
                     const { current, next } = getLyricAtTime(musicState.parsedLyrics, lyricsElapsed || 0);
                     const lyricsRightX = bannerX + bannerW - 12;
-                    const lyricsTopY = bannerY + 8;
+                    const lyricsLine0Y = bannerY + 17; // 歌词第1行中心
+                    const lyricsLine1Y = bannerY + 37; // 歌词第2行中心
                     const lyricsWidth = lyricsAreaWidth;
 
                     // Helper function to draw wrapped lyrics
-                    const drawWrappedLyric = (text, y, maxWidth, lineHeight, color, fontSize) => {
+                    const drawWrappedLyric = (text, y, maxWidth, color, fontSize) => {
                         ctx.fillStyle = color;
                         ctx.font = `${fontSize}px ${fontStacks.author}`;
                         ctx.textAlign = 'right';
-                        ctx.textBaseline = 'top';
+                        ctx.textBaseline = 'middle';
                         const lines = [];
                         let currentLine = '';
                         for (const ch of text) {
@@ -1769,19 +2024,20 @@
                             }
                         }
                         if (currentLine) lines.push(currentLine);
+                        // Each line in a wrapped lyric occupies 16px height
                         lines.forEach((line, i) => {
-                            ctx.fillText(line, lyricsRightX, y + i * lineHeight);
+                            ctx.fillText(line, lyricsRightX, y + i * 16);
                         });
                     };
 
-                    // Draw current lyric (full opacity, no fade)
+                    // Draw current lyric (full opacity, no fade) at lyricsLine0Y
                     if (current) {
-                        drawWrappedLyric(current.text, lyricsTopY, lyricsWidth - 10, 16, '#1a1a1a', 12);
+                        drawWrappedLyric(current.text, lyricsLine0Y, lyricsWidth - 10, '#1a1a1a', 12);
                     }
 
-                    // Draw next lyric (hidden until it becomes current)
+                    // Draw next lyric (hidden until it becomes current) at lyricsLine1Y
                     if (next && next.time <= (lyricsElapsed || 0)) {
-                        drawWrappedLyric(next.text, lyricsTopY, lyricsWidth - 10, 16, '#5a5a5a', 11);
+                        drawWrappedLyric(next.text, lyricsLine1Y, lyricsWidth - 10, '#5a5a5a', 11);
                     }
                 }
             }
@@ -1924,6 +2180,12 @@
             parsedLyrics: []
         };
 
+        const mediaState = {
+            items: [],
+            previewIndex: -1,
+            previewElapsed: 0
+        };
+
         let isRendering = false;
 
         function showToast(msg, duration = 2000) {
@@ -1933,7 +2195,7 @@
             setTimeout(() => toast.classList.remove('show'), duration);
         }
 
-        function renderEditor(lyricsElapsed) {
+        function renderEditor(lyricsElapsed, mediaElapsed) {
             const title = document.getElementById('editorTitleInput').value || '无题';
             const author = document.getElementById('editorAuthorInput').value || '佚名';
             const textarea = document.getElementById('editorTextarea');
@@ -1962,7 +2224,8 @@
             drawCard(document.getElementById('editorCanvas'), {
                 ...editorData,
                 cardWidth: 0,
-                lyricsElapsed
+                lyricsElapsed,
+                mediaElapsed: mediaElapsed !== undefined ? mediaElapsed : mediaState.previewElapsed
             });
         }
 
@@ -2101,10 +2364,6 @@
                 showToast('结束时间格式无效，请使用 2:00 或 00:02:00');
                 return null;
             }
-            if (endSec > 0 && endSec <= startSec) {
-                showToast('结束时间必须大于开始时间');
-                return null;
-            }
             return {
                 startSec,
                 endSec,
@@ -2178,7 +2437,7 @@
 
         async function setBannerCoverFromDataUrl(dataUrl) {
             if (!musicState.meta) {
-                musicState.meta = { title: '', artist: '', album: '', durationSec: 0, coverDataUrl: '' };
+                musicState.meta = { title: '', artist: '', album: '', durationSec: 0, coverDataUrl: '', lyrics: '' };
             }
             musicState.meta.coverDataUrl = dataUrl || '';
             musicState.coverImage = null;
@@ -2215,7 +2474,8 @@
                         artist: meta?.artist || '',
                         album: meta?.album || '',
                         durationSec: Number(meta?.durationSec || 0),
-                        coverDataUrl: meta?.coverDataUrl || ''
+                        coverDataUrl: meta?.coverDataUrl || '',
+                        lyrics: meta?.lyrics || ''
                     };
                 } catch {
                 }
@@ -2259,6 +2519,11 @@
             if (musicState.meta?.coverDataUrl) {
                 await setBannerCoverFromDataUrl(musicState.meta.coverDataUrl);
             }
+            // 将歌词写入歌词编辑区
+            if (musicState.meta?.lyrics) {
+                musicState.lyricsText = musicState.meta.lyrics;
+                document.getElementById('lyricsTextarea').value = musicState.meta.lyrics;
+            }
             syncBannerInputsFromMeta();
             normalizeClipInputsByDuration(musicState.meta?.durationSec || 0);
             updateMusicPanelUI();
@@ -2290,6 +2555,180 @@
                 showToast('已清除背景音乐');
             }
         }
+
+        // ============ Media Management ============
+
+        function generateMediaId() {
+            return 'media_' + Date.now() + '_' + Math.random().toString(16).slice(2, 6);
+        }
+
+        function getMediaItemDuration(item) {
+            return item.duration || 5;
+        }
+
+        function getMediaTotalDuration() {
+            return mediaState.items.reduce((sum, item) => sum + getMediaItemDuration(item), 0);
+        }
+
+        function getMediaItemAtTime(elapsedSec) {
+            if (mediaState.items.length === 0) return null;
+            let accumulated = 0;
+            for (const item of mediaState.items) {
+                const itemDur = getMediaItemDuration(item);
+                if (elapsedSec < accumulated + itemDur) {
+                    const localElapsed = elapsedSec - accumulated;
+                    return { item, localElapsed };
+                }
+                accumulated += itemDur;
+            }
+            // Beyond total duration: return last item at its full duration (freeze last frame)
+            const lastItem = mediaState.items[mediaState.items.length - 1];
+            return { item: lastItem, localElapsed: getMediaItemDuration(lastItem) };
+        }
+
+        async function loadMediaItemThumbnail(item) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => { item.thumb = img; resolve(); };
+                img.onerror = () => resolve();
+                img.src = item.url;
+            });
+        }
+
+        async function addMediaFile(file) {
+            const id = generateMediaId();
+            const url = URL.createObjectURL(file);
+
+            const item = {
+                id,
+                type: 'image',
+                file,
+                url,
+                name: file.name,
+                duration: 5,
+                thumb: null
+            };
+
+            mediaState.items.push(item);
+            await loadMediaItemThumbnail(item);
+            renderMediaItemList();
+            updateMediaTotalDuration();
+            renderEditor();
+        }
+
+        function removeMediaItem(id) {
+            const idx = mediaState.items.findIndex(i => i.id === id);
+            if (idx !== -1) {
+                const item = mediaState.items[idx];
+                if (item.url) URL.revokeObjectURL(item.url);
+                mediaState.items.splice(idx, 1);
+            }
+            if (mediaState.previewIndex >= mediaState.items.length) {
+                mediaState.previewIndex = mediaState.items.length - 1;
+            }
+            renderMediaItemList();
+            updateMediaTotalDuration();
+            renderEditor();
+        }
+
+        function updateMediaItemDuration(id, duration) {
+            const item = mediaState.items.find(i => i.id === id);
+            if (item) {
+                item.duration = Math.max(1, Math.min(300, parseInt(duration) || 5));
+            }
+            updateMediaTotalDuration();
+            renderEditor();
+        }
+
+        function moveMediaItem(fromIndex, toIndex) {
+            if (fromIndex < 0 || fromIndex >= mediaState.items.length) return;
+            if (toIndex < 0 || toIndex >= mediaState.items.length) return;
+            const [item] = mediaState.items.splice(fromIndex, 1);
+            mediaState.items.splice(toIndex, 0, item);
+            renderMediaItemList();
+            renderEditor();
+        }
+
+        function renderMediaItemList() {
+            const list = document.getElementById('mediaItemList');
+            if (mediaState.items.length === 0) {
+                list.innerHTML = '<div class="media-empty-hint">暂无媒体内容，可上传图片</div>';
+                return;
+            }
+
+            list.innerHTML = mediaState.items.map((item, idx) => {
+                const thumbSrc = item.thumb ? item.url : '';
+                const durationUnit = '秒';
+
+                return `
+                    <div class="media-item" data-id="${item.id}" data-idx="${idx}">
+                        ${thumbSrc
+                            ? `<img class="media-item-thumb" src="${thumbSrc}" />`
+                            : `<div class="media-item-thumb" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(0,0,0,0.2)">?</div>`
+                        }
+                        <div class="media-item-info">
+                            <div class="media-item-name" title="${item.name}">${item.name}</div>
+                            <div class="media-item-meta">图片 · ${item.duration}秒</div>
+                        </div>
+                        <div class="media-item-duration-row">
+                            <input class="media-item-duration-input" type="number"
+                                value="${item.duration}" min="1" max="300"
+                                data-id="${item.id}" />
+                            <span class="media-item-duration-unit">${durationUnit}</span>
+                        </div>
+                        <div class="media-item-actions">
+                            <span class="media-item-move-btn" data-move="up" data-idx="${idx}" title="上移" ${idx === 0 ? 'style="visibility:hidden"' : ''}>↑</span>
+                            <span class="media-item-move-btn" data-move="down" data-idx="${idx}" title="下移" ${idx === mediaState.items.length - 1 ? 'style="visibility:hidden"' : ''}>↓</span>
+                        </div>
+                        <span class="media-item-remove" data-remove="${item.id}">×</span>
+                    </div>
+                `;
+            }).join('');
+
+            // Duration input handlers
+            list.querySelectorAll('.media-item-duration-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    updateMediaItemDuration(e.target.dataset.id, e.target.value);
+                });
+                input.addEventListener('click', (e) => e.stopPropagation());
+            });
+
+            // Remove button handlers
+            list.querySelectorAll('.media-item-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeMediaItem(e.target.dataset.remove);
+                });
+            });
+
+            // Move button handlers
+            list.querySelectorAll('.media-item-move-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.idx);
+                    const dir = btn.dataset.move;
+                    if (dir === 'up' && idx > 0) {
+                        moveMediaItem(idx, idx - 1);
+                    } else if (dir === 'down' && idx < mediaState.items.length - 1) {
+                        moveMediaItem(idx, idx + 1);
+                    }
+                });
+            });
+        }
+
+        function updateMediaTotalDuration() {
+            const total = getMediaTotalDuration();
+            const el = document.getElementById('mediaTotalDuration');
+            if (mediaState.items.length > 0) {
+                const m = Math.floor(total / 60);
+                const s = Math.floor(total % 60);
+                el.textContent = `媒体总时长: ${m > 0 ? m + '分' : ''}${s}秒 (共${mediaState.items.length}项)`;
+            } else {
+                el.textContent = '';
+            }
+        }
+
+        // ============ End Media Management ============
 
         function getMusicFileExtension(file) {
             const byName = (file?.name || '').split('.').pop()?.trim().toLowerCase() || '';
@@ -2328,50 +2767,118 @@
             if (!invoke) {
                 return null;
             }
-            if (!musicState.file) {
-                showToast('请先上传背景音乐');
+
+            const hasMusic = !!(musicState.file);
+            const hasMedia = mediaState.items.length > 0;
+
+            if (!hasMusic && !hasMedia) {
+                showToast('请先添加背景音乐或媒体内容');
                 return false;
             }
+
+            if (editorData.lines.length === 0) {
+                showToast('请先输入诗句');
+                return false;
+            }
+
             const canvas = document.getElementById('editorCanvas');
-            const audioBuffer = await musicState.file.arrayBuffer();
-            const audioBase64 = arrayBufferToBase64(audioBuffer);
-            try {
-                const clipRange = getClipRange();
+
+            // Calculate total duration
+            const mediaTotalDuration = getMediaTotalDuration();
+            let audioDuration = 0;
+            let audioBase64 = '';
+            let audioExtension = '';
+            let clipRange = null;
+
+            if (hasMusic) {
+                const audioBuffer = await musicState.file.arrayBuffer();
+                audioBase64 = arrayBufferToBase64(audioBuffer);
+                audioExtension = getMusicFileExtension(musicState.file);
+                clipRange = getClipRange();
                 if (!clipRange) {
                     return false;
                 }
-                const audioDuration = musicState.meta?.duration_sec || 0;
-                const startSec = clipRange.startSec;
-                const endSec = clipRange.endSec > 0 ? clipRange.endSec : audioDuration;
-                const totalDuration = endSec - startSec + 1;
-                if (totalDuration <= 0) {
-                    showToast('剪辑时长无效');
-                    return false;
+                const endSec = clipRange.endSec > 0 ? clipRange.endSec : (musicState.meta?.duration_sec || 0);
+                audioDuration = endSec - clipRange.startSec + 1;
+            }
+
+            const baseDuration = Math.max(audioDuration, mediaTotalDuration, 1);
+            const totalDuration = baseDuration;
+
+            if (totalDuration <= 0) {
+                showToast('导出时长无效');
+                return false;
+            }
+
+            // Frame-by-frame rendering
+            const fps = 1;
+            const frameDuration = 1.0 / fps;
+            const frameDataUrls = [];
+
+            let lastShownItemId = null;
+            const startInput = document.getElementById('clipStartInput');
+            const endInput = document.getElementById('clipEndInput');
+            const savedStart = startInput.value;
+            const savedEnd = endInput.value;
+
+            for (let t = 0; t < totalDuration; t += frameDuration) {
+                const mediaElapsed = t;
+                const lyricsElapsed = hasMusic && clipRange ? clipRange.startSec + t : t;
+
+                // Update start input to show current position (step effect)
+                const m = Math.floor(t / 60);
+                const s = Math.floor(t % 60);
+                startInput.value = `${m}:${s.toString().padStart(2, '0')}`;
+
+                renderEditor(lyricsElapsed, mediaElapsed);
+
+                // Get current media item to detect transitions
+                const currentMedia = getMediaItemAtTime(mediaElapsed);
+                const currentItemId = currentMedia ? currentMedia.item.id : null;
+
+                const dataUrl = canvas.toDataURL('image/png');
+                frameDataUrls.push(dataUrl);
+
+                lastShownItemId = currentItemId;
+            }
+
+            // Ensure we have at least one frame
+            if (frameDataUrls.length === 0) {
+                renderEditor(0, 0);
+                frameDataUrls.push(canvas.toDataURL('image/png'));
+            }
+
+            // Duplicate last frame 30 times to make it linger for 1 extra second (30fps video)
+            if (frameDataUrls.length > 0) {
+                const lastFrame = frameDataUrls[frameDataUrls.length - 1];
+                for (let i = 0; i < 30; i++) {
+                    frameDataUrls.push(lastFrame);
                 }
-                // Capture frames at each second
-                const frames = [];
-                const startInput = document.getElementById('clipStartInput');
-                const endInput = document.getElementById('clipEndInput');
-                const savedStart = startInput.value;
-                const savedEnd = endInput.value;
-                for (let elapsed = 0; elapsed < totalDuration; elapsed++) {
-                    const m = Math.floor(elapsed / 60);
-                    const s = elapsed % 60;
-                    startInput.value = `${m}:${s.toString().padStart(2, '0')}`;
-                    renderEditor(startSec + elapsed);
-                    frames.push(canvas.toDataURL('image/png'));
-                }
-                // Restore original values
-                startInput.value = savedStart;
-                endInput.value = savedEnd;
-                renderEditor();
+            }
+
+            // Restore original clip values
+            startInput.value = savedStart;
+            endInput.value = savedEnd;
+
+            // Restore editor
+            renderEditor();
+
+            try {
                 const outputPath = await invoke('export_video_ffmpeg', {
-                    imageDataUrls: frames,
-                    audioBase64,
-                    audioExtension: getMusicFileExtension(musicState.file),
+                    poemCardPng: frameDataUrls[0],
+                    poemCardW: canvas.width,
+                    poemCardH: canvas.height,
+                    mediaAreaY: 0,
+                    mediaAreaH: 0,
+                    mediaItemsJson: JSON.stringify([]),
+                    audioBase64: audioBase64,
+                    audioExtension: audioExtension,
                     title: editorData.title || '无题',
-                    startSec: clipRange.startText,
-                    endSec: clipRange.endText
+                    startSec: clipRange ? clipRange.startText : '0',
+                    endSec: clipRange ? clipRange.endText : '',
+                    totalDuration: totalDuration,
+                    frameDataUrls: frameDataUrls,
+                    fps: fps
                 });
                 return outputPath;
             } catch (error) {
@@ -2755,6 +3262,18 @@
                 event.target.value = '';
             }
         });
+
+        // Media file input handlers
+        document.getElementById('mediaAddImage').addEventListener('change', async (event) => {
+            const files = Array.from(event.target.files || []);
+            for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                    await addMediaFile(file);
+                }
+            }
+            event.target.value = '';
+        });
+
         document.getElementById('musicPreview').addEventListener('loadeddata', () => {
             if (musicState.url) {
                 const d = Number(document.getElementById('musicPreview').duration);
