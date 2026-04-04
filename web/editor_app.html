@@ -1,0 +1,2851 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --ink: #1a1a1a;
+            --ink-light: #5a5a5a;
+            --paper: #f5efe2;
+            --paper-warm: #ede5d4;
+            --seal-red: #b84c3e;
+            --seal-dark: #8a3a2e;
+            --shadow: rgba(30, 20, 10, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "Noto Serif SC", serif;
+            background: var(--paper);
+            min-height: 100vh;
+            overflow: hidden;
+            cursor: default;
+            user-select: none;
+        }
+
+        .bg-gradient {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: linear-gradient(
+                135deg,
+                #e8dfd0 0%,
+                #ddd0bc 15%,
+                #e0d5c5 30%,
+                #d4c4b0 45%,
+                #e2d6c5 60%,
+                #d8cabb 75%,
+                #e0d2c2 100%
+            );
+            background-size: 400% 400%;
+            animation: gradientFlow 18s ease infinite;
+        }
+
+        .bg-gradient::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 30%, rgba(200,180,150,0.18) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(190,170,140,0.15) 0%, transparent 45%),
+                radial-gradient(ellipse at 50% 10%, rgba(210,190,160,0.12) 0%, transparent 40%);
+            animation: gradientFlow 12s ease infinite reverse;
+        }
+
+        .bg-gradient::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 70% 20%, rgba(180,160,130,0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 30% 80%, rgba(200,175,145,0.12) 0%, transparent 50%);
+            animation: gradientFlow 15s ease infinite;
+            animation-delay: -5s;
+        }
+
+        @keyframes gradientFlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .bg-vignette {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(180,160,130,0.2) 100%);
+            pointer-events: none;
+        }
+
+        .topbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            padding: 22px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .page-title {
+            font-family: "Ma Shan Zheng", serif;
+            font-size: 20px;
+            color: var(--ink);
+            letter-spacing: 0.15em;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .header-btn {
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            color: var(--ink-light);
+            background: transparent;
+            border: 1px solid rgba(0,0,0,0.14);
+            padding: 7px 18px;
+            border-radius: 1px;
+            cursor: pointer;
+            letter-spacing: 0.18em;
+            transition: all 0.25s ease;
+        }
+        .header-btn:hover {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+
+        .header-btn.primary {
+            background: var(--seal-red);
+            color: #fff;
+            border-color: var(--seal-red);
+        }
+        .header-btn.primary:hover {
+            background: var(--seal-dark);
+            border-color: var(--seal-dark);
+        }
+
+        .scene { display: none; }
+
+        .welcome-card {
+            background: var(--paper-warm);
+            border-radius: 4px;
+            padding: 48px 52px;
+            max-width: 580px;
+            width: 92vw;
+            box-shadow:
+                0 2px 8px var(--shadow),
+                0 12px 40px rgba(30,20,10,0.08);
+            animation: pageIn 0.5s ease forwards;
+        }
+
+        .welcome-title {
+            font-family: "Ma Shan Zheng", serif;
+            font-size: 28px;
+            color: var(--ink);
+            text-align: center;
+            letter-spacing: 0.18em;
+            margin-bottom: 16px;
+        }
+
+        .welcome-divider {
+            width: 36px;
+            height: 1px;
+            background: rgba(0,0,0,0.12);
+            margin: 0 auto 20px;
+        }
+
+        .welcome-hint {
+            font-size: 13px;
+            color: var(--ink-light);
+            text-align: center;
+            letter-spacing: 0.12em;
+            line-height: 1.8;
+        }
+
+        .history-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 340px;
+            height: 100vh;
+            background: var(--paper);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+        }
+
+        .history-panel.show {
+            display: flex;
+        }
+
+        .history-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-title {
+            font-family: "Ma Shan Zheng", serif;
+            font-size: 18px;
+            color: var(--ink);
+            letter-spacing: 0.1em;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .history-btn {
+            font-family: "Noto Serif SC", serif;
+            font-size: 11px;
+            color: var(--ink-light);
+            background: transparent;
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 5px 12px;
+            border-radius: 2px;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: all 0.2s;
+        }
+        .history-btn:hover {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+
+        .history-btn.danger:hover {
+            background: var(--seal-red);
+            border-color: var(--seal-red);
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 0;
+        }
+
+        .history-list::-webkit-scrollbar { width: 4px; }
+        .history-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+
+        .history-item {
+            padding: 14px 24px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            transition: background 0.15s;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .history-item:hover { background: rgba(0,0,0,0.03); }
+        .history-item:last-child { border-bottom: none; }
+
+        .history-item-left {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .history-item-title {
+            font-family: "Ma Shan Zheng", serif;
+            font-size: 16px;
+            color: var(--ink);
+            margin-bottom: 3px;
+        }
+
+        .history-item-author {
+            font-size: 11px;
+            color: var(--ink-light);
+            letter-spacing: 0.1em;
+        }
+
+        .history-item-preview {
+            font-size: 12px;
+            color: var(--ink-light);
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item-time {
+            font-size: 10px;
+            color: rgba(0,0,0,0.2);
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+
+        .history-item-delete {
+            font-size: 16px;
+            color: rgba(0,0,0,0.15);
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: color 0.2s;
+            flex-shrink: 0;
+        }
+        .history-item-delete:hover { color: var(--seal-red); }
+
+        .history-empty {
+            text-align: center;
+            padding: 40px;
+            font-size: 13px;
+            color: var(--ink-light);
+            letter-spacing: 0.1em;
+        }
+
+        .history-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 199;
+            display: none;
+            background: rgba(0,0,0,0.3);
+        }
+        .history-overlay.show { display: block; }
+
+        /* Music Panel */
+        .music-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 360px;
+            height: 100vh;
+            background: var(--paper);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+            animation: slideInRight 0.3s ease;
+        }
+        .music-panel.show { display: flex; }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0.5; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .music-panel-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(184,76,62,0.06) 0%, transparent 60%);
+        }
+
+        .music-panel-title {
+            font-family: "Ma Shan Zheng", serif;
+            font-size: 18px;
+            color: var(--ink);
+            letter-spacing: 0.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .music-panel-title::before {
+            content: '♪';
+            font-size: 20px;
+            color: var(--seal-red);
+        }
+
+        .music-panel-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .music-panel-btn {
+            font-family: "Noto Serif SC", serif;
+            font-size: 11px;
+            color: var(--ink-light);
+            background: transparent;
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 5px 12px;
+            border-radius: 2px;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: all 0.2s;
+        }
+        .music-panel-btn:hover {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+
+        .music-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+        }
+        .music-panel-body::-webkit-scrollbar { width: 4px; }
+        .music-panel-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+
+        .music-upload-section {
+            margin-bottom: 24px;
+        }
+
+        .music-section-label {
+            font-family: "Ma Shan Zheng", serif;
+            font-size: 14px;
+            color: var(--ink);
+            letter-spacing: 0.08em;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+
+        .music-upload-zone {
+            border: 2px dashed rgba(0,0,0,0.12);
+            border-radius: 6px;
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            background: rgba(0,0,0,0.02);
+        }
+        .music-upload-zone:hover {
+            border-color: var(--seal-red);
+            background: rgba(184,76,62,0.04);
+        }
+        .music-upload-zone.dragover {
+            border-color: var(--seal-red);
+            background: rgba(184,76,62,0.08);
+            transform: scale(1.02);
+        }
+
+        .music-upload-icon {
+            font-size: 28px;
+            color: var(--ink-light);
+            margin-bottom: 8px;
+        }
+        .music-upload-zone:hover .music-upload-icon {
+            color: var(--seal-red);
+        }
+
+        .music-upload-text {
+            font-size: 12px;
+            color: var(--ink-light);
+            letter-spacing: 0.08em;
+        }
+
+        .music-upload-input {
+            display: none;
+        }
+
+        .music-current-file {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: rgba(0,0,0,0.03);
+            border-radius: 6px;
+            border: 1px solid rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+
+        .music-current-cover {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: rgba(0,0,0,0.08);
+            flex-shrink: 0;
+        }
+
+        .music-current-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .music-current-title {
+            font-family: "Ma Shan Zheng", serif;
+            font-size: 15px;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .music-current-meta {
+            font-size: 11px;
+            color: var(--ink-light);
+            letter-spacing: 0.05em;
+            margin-top: 2px;
+        }
+
+        .music-current-duration {
+            font-size: 12px;
+            color: var(--ink-light);
+            flex-shrink: 0;
+        }
+
+        .music-current-remove {
+            font-size: 18px;
+            color: rgba(0,0,0,0.2);
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: color 0.2s;
+        }
+        .music-current-remove:hover { color: var(--seal-red); }
+
+        .music-preview-player {
+            margin: 16px 0;
+            border-radius: 6px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.04);
+        }
+
+        .music-preview-player audio {
+            width: 100%;
+            height: 36px;
+        }
+
+        .music-banner-section {
+            margin-bottom: 24px;
+        }
+
+        .music-input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .music-input-row .seal-label {
+            min-width: 56px;
+            font-size: 12px;
+            color: var(--ink-light);
+            letter-spacing: 0.08em;
+        }
+
+        .music-text-input {
+            flex: 1;
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 6px 10px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .music-text-input:focus { border-color: rgba(0,0,0,0.25); }
+        .music-text-input::placeholder { color: rgba(0,0,0,0.25); }
+
+        .music-clip-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .music-clip-row .seal-label {
+            font-size: 12px;
+            color: var(--ink-light);
+            letter-spacing: 0.08em;
+            min-width: auto;
+        }
+
+        .music-clip-input {
+            width: 80px;
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 6px 8px;
+            outline: none;
+            text-align: center;
+        }
+        .music-clip-input:focus { border-color: rgba(0,0,0,0.25); }
+
+        .music-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .music-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--ink-light);
+            cursor: pointer;
+            user-select: none;
+            letter-spacing: 0.05em;
+        }
+        .music-toggle-label input[type="checkbox"] { cursor: pointer; accent-color: var(--seal-red); }
+
+        .music-cover-section {
+            margin-bottom: 24px;
+        }
+
+        .music-lyrics-section {
+            margin-bottom: 24px;
+        }
+
+        .music-lyrics-hint {
+            font-size: 11px;
+            color: var(--ink-light);
+            margin-bottom: 8px;
+            letter-spacing: 0.05em;
+        }
+
+        .music-lyrics-textarea {
+            width: 100%;
+            height: 100px;
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 8px 10px;
+            outline: none;
+            resize: vertical;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .music-lyrics-textarea:focus { border-color: rgba(0,0,0,0.25); }
+        .music-lyrics-textarea::placeholder { color: rgba(0,0,0,0.25); }
+
+        .music-cover-upload {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .music-cover-preview {
+            width: 56px;
+            height: 56px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: rgba(0,0,0,0.08);
+            flex-shrink: 0;
+        }
+
+        .music-cover-btn {
+            font-family: "Noto Serif SC", serif;
+            font-size: 11px;
+            color: var(--ink-light);
+            background: transparent;
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 6px 14px;
+            border-radius: 2px;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            transition: all 0.2s;
+        }
+        .music-cover-btn:hover {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+
+        .music-empty-state {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--ink-light);
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            line-height: 1.8;
+        }
+
+        /* Batch Modal */
+        .batch-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .batch-modal.show { display: flex; }
+
+        .batch-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .batch-content {
+            position: relative;
+            background: var(--paper);
+            border-radius: 8px;
+            width: 92vw;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .batch-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .batch-title {
+            font-family: "Ma Shan Zheng", serif;
+            font-size: 18px;
+            color: var(--ink);
+            letter-spacing: 0.1em;
+        }
+
+        .batch-close {
+            font-size: 22px;
+            color: var(--ink-light);
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px;
+        }
+        .batch-close:hover { color: var(--ink); }
+
+        .batch-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+        }
+
+        .batch-textarea {
+            width: 100%;
+            font-family: "SimSun", "STSong", serif;
+            font-size: 13px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 12px 14px;
+            resize: vertical;
+            min-height: 200px;
+            line-height: 1.8;
+            letter-spacing: 0.08em;
+            outline: none;
+        }
+        .batch-textarea:focus { border-color: rgba(0,0,0,0.25); }
+        .batch-textarea::placeholder { color: rgba(0,0,0,0.2); }
+
+        .batch-hint {
+            font-size: 11px;
+            color: var(--ink-light);
+            margin-top: 8px;
+            letter-spacing: 0.08em;
+            line-height: 1.6;
+        }
+
+        .batch-preview {
+            margin-top: 16px;
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 4px;
+            padding: 16px;
+            background: rgba(0,0,0,0.02);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .batch-preview-item {
+            display: flex;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            font-size: 13px;
+            color: var(--ink);
+        }
+        .batch-preview-item:last-child { border-bottom: none; }
+        .batch-preview-item .idx { color: var(--ink-light); min-width: 24px; }
+        .batch-preview-item .title { font-family: "Ma Shan Zheng", serif; min-width: 100px; }
+        .batch-preview-item .author { color: var(--ink-light); }
+
+        .batch-footer {
+            padding: 16px 24px;
+            border-top: 1px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .batch-progress {
+            font-size: 12px;
+            color: var(--ink-light);
+            letter-spacing: 0.1em;
+        }
+
+        .batch-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .batch-btn {
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            padding: 7px 20px;
+            border-radius: 2px;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: all 0.2s;
+            border: 1px solid rgba(0,0,0,0.15);
+            background: transparent;
+            color: var(--ink-light);
+        }
+        .batch-btn:hover {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+        .batch-btn.primary {
+            background: var(--seal-red);
+            color: #fff;
+            border-color: var(--seal-red);
+        }
+        .batch-btn.primary:hover {
+            background: var(--seal-dark);
+            border-color: var(--seal-dark);
+        }
+        .batch-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Editor Modal */
+        .editor-modal {
+            position: fixed;
+            inset: 76px 18px 18px;
+            z-index: 120;
+            display: block;
+        }
+        .editor-modal.show { display: block; }
+
+        .editor-overlay { display: none; }
+
+        .editor-content {
+            background: var(--paper);
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: minmax(420px, 520px) minmax(480px, 1fr);
+            gap: 0;
+            overflow: hidden;
+            box-shadow:
+                0 6px 20px rgba(30,20,10,0.12),
+                0 20px 60px rgba(30,20,10,0.1);
+        }
+
+        .editor-header {
+            padding: 22px 24px 18px;
+            border-right: 1px solid rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .editor-header-title {
+            font-family: "Noto Serif SC", serif;
+            font-size: 15px;
+            color: var(--ink);
+            letter-spacing: 0.1em;
+        }
+
+        .editor-meta-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .editor-meta-input {
+            font-family: "Noto Serif SC", serif;
+            font-size: 14px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 6px 12px;
+            outline: none;
+            letter-spacing: 0.1em;
+            transition: border-color 0.2s;
+        }
+        .editor-meta-input:focus { border-color: rgba(0,0,0,0.25); }
+        .editor-meta-input::placeholder { color: rgba(0,0,0,0.2); }
+
+        .editor-title-input {
+            flex: 1;
+            font-family: "Ma Shan Zheng", serif;
+            font-size: 16px;
+        }
+
+        .editor-author-input {
+            width: 160px;
+            font-size: 12px;
+        }
+
+        .editor-textarea {
+            font-family: "SimSun", "STSong", serif;
+            font-size: 14px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 10px 14px;
+            resize: vertical;
+            min-height: 160px;
+            max-height: 280px;
+            overflow-y: auto;
+            line-height: 1.8;
+            letter-spacing: 0.1em;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .editor-textarea:focus { border-color: rgba(0,0,0,0.25); }
+        .editor-textarea::placeholder { color: rgba(0,0,0,0.2); letter-spacing: 0.15em; }
+
+        .editor-seal-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .seal-label {
+            font-size: 12px;
+            color: var(--ink-light);
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+        }
+
+        .seal-input {
+            font-family: "SimSun", serif;
+            font-size: 14px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 5px 10px;
+            width: 80px;
+            outline: none;
+            letter-spacing: 0.2em;
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+        .seal-input:focus { border-color: rgba(0,0,0,0.25); }
+
+        .editor-controls {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 12px 0;
+        }
+
+        .editor-controls label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--ink-light);
+            letter-spacing: 0.08em;
+            white-space: nowrap;
+        }
+
+        .editor-controls input[type="range"] {
+            width: 100px;
+            accent-color: var(--seal-red);
+            cursor: pointer;
+        }
+
+        .editor-controls span {
+            min-width: 28px;
+            text-align: right;
+            color: var(--ink);
+            font-size: 12px;
+        }
+
+        .font-zones {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 12px;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 4px;
+            background: rgba(0,0,0,0.02);
+        }
+
+        .font-zones-title {
+            font-size: 12px;
+            color: var(--ink-light);
+            letter-spacing: 0.1em;
+        }
+
+        .font-zone-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .font-zone-label {
+            width: 56px;
+            font-size: 12px;
+            color: var(--ink-light);
+            letter-spacing: 0.08em;
+        }
+
+        .font-zone-state {
+            flex: 1;
+            min-width: 160px;
+            font-size: 12px;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .font-upload-btn {
+            position: relative;
+            overflow: hidden;
+            font-family: "Noto Serif SC", serif;
+            font-size: 11px;
+            color: var(--ink-light);
+            border: 1px solid rgba(0,0,0,0.12);
+            padding: 4px 12px;
+            border-radius: 2px;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            background: rgba(0,0,0,0.02);
+            transition: all 0.2s;
+        }
+
+        .font-upload-btn:hover {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+
+        .font-upload-input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .font-clear-btn {
+            font-family: "Noto Serif SC", serif;
+            font-size: 11px;
+            color: var(--ink-light);
+            border: 1px solid rgba(0,0,0,0.12);
+            padding: 4px 12px;
+            border-radius: 2px;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            background: transparent;
+            transition: all 0.2s;
+        }
+
+        .font-clear-btn:hover {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+
+        .audio-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 12px;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 4px;
+            background: rgba(0,0,0,0.02);
+        }
+
+        .audio-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .audio-file-input {
+            flex: 1;
+            min-width: 200px;
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            color: var(--ink-light);
+        }
+
+        .audio-preview {
+            width: 100%;
+            height: 32px;
+        }
+
+        .export-limit-input {
+            width: 84px;
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 4px 8px;
+            outline: none;
+        }
+
+        .audio-range-input {
+            width: 92px;
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 4px 8px;
+            outline: none;
+        }
+
+        .banner-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .banner-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--ink-light);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .banner-toggle-label input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .banner-input {
+            min-width: 120px;
+            flex: 1;
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            color: var(--ink);
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 4px 8px;
+            outline: none;
+        }
+
+        .music-meta-banner {
+            display: none;
+            margin-top: 8px;
+            padding: 8px 10px;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: rgba(0,0,0,0.02);
+            border-radius: 4px;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .music-meta-banner.show {
+            display: flex;
+        }
+
+        .music-meta-cover {
+            width: 42px;
+            height: 42px;
+            object-fit: cover;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.08);
+            flex-shrink: 0;
+            display: none;
+        }
+
+        .music-meta-cover.show {
+            display: block;
+        }
+
+        .music-meta-text {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .music-meta-title {
+            font-size: 12px;
+            color: var(--ink);
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .music-meta-sub {
+            font-size: 11px;
+            color: var(--ink-light);
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .editor-btn {
+            font-family: "Noto Serif SC", serif;
+            font-size: 12px;
+            padding: 7px 20px;
+            border-radius: 2px;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(0,0,0,0.15);
+            background: transparent;
+            color: var(--ink-light);
+        }
+
+        .editor-btn:hover {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+
+        .editor-btn.primary {
+            background: var(--seal-red);
+            color: #fff;
+            border-color: var(--seal-red);
+        }
+
+        .editor-btn.primary:hover {
+            background: var(--seal-dark);
+            border-color: var(--seal-dark);
+        }
+
+        .editor-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .editor-canvas-wrap {
+            overflow: auto;
+            padding: 22px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background: rgba(0,0,0,0.02);
+        }
+
+        #editorCanvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--ink);
+            color: var(--paper);
+            font-size: 13px;
+            padding: 10px 24px;
+            border-radius: 4px;
+            z-index: 500;
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            letter-spacing: 0.1em;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes pageIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="bg-vignette"></div>
+
+    <div class="topbar">
+        <div class="page-title">Editor</div>
+        <div class="topbar-actions">
+            <button class="header-btn" id="musicBtn">背景音乐</button>
+            <button class="header-btn" id="historyBtn">历史记录</button>
+        </div>
+    </div>
+
+    <div class="scene">
+        <div class="welcome-card">
+            <div class="welcome-title">Editor</div>
+            <div class="welcome-divider"></div>
+        </div>
+    </div>
+
+    <!-- Music Panel -->
+    <div class="music-panel" id="musicPanel">
+        <div class="music-panel-header">
+            <div class="music-panel-title">背景音乐</div>
+            <div class="music-panel-actions">
+                <button class="music-panel-btn" id="closeMusic">关闭</button>
+            </div>
+        </div>
+        <div class="music-panel-body">
+            <div class="music-upload-section">
+                <div class="music-section-label">音频文件</div>
+                <div class="music-upload-zone" id="musicUploadZone">
+                    <div class="music-upload-icon">♪</div>
+                    <div class="music-upload-text">点击或拖拽上传音频文件</div>
+                    <input class="music-upload-input" id="musicUploadInput" type="file" accept="audio/*" />
+                </div>
+                <div class="music-current-file" id="musicCurrentFile" style="display:none;">
+                    <img class="music-current-cover" id="musicCurrentCover" />
+                    <div class="music-current-info">
+                        <div class="music-current-title" id="musicCurrentTitle"></div>
+                        <div class="music-current-meta" id="musicCurrentMeta"></div>
+                    </div>
+                    <div class="music-current-duration" id="musicCurrentDuration"></div>
+                    <span class="music-current-remove" id="musicRemoveBtn">×</span>
+                </div>
+                <div class="music-preview-player" id="musicPreviewPlayer" style="display:none;">
+                    <audio id="musicPreview" controls preload="metadata"></audio>
+                </div>
+            </div>
+
+            <div class="music-banner-section">
+                <div class="music-section-label">横幅信息</div>
+                <div class="music-input-row">
+                    <span class="seal-label">标题</span>
+                    <input class="music-text-input" id="bannerTitleInput" type="text" placeholder="自动识别标题，可修改" />
+                </div>
+                <div class="music-input-row">
+                    <span class="seal-label">作者</span>
+                    <input class="music-text-input" id="bannerArtistInput" type="text" placeholder="自动识别作者，可修改" />
+                </div>
+                <div class="music-input-row">
+                    <span class="seal-label">专辑</span>
+                    <input class="music-text-input" id="bannerAlbumInput" type="text" placeholder="可选" />
+                </div>
+                <div class="music-clip-row">
+                    <span class="seal-label">片段</span>
+                    <input class="music-clip-input" id="clipStartInput" type="text" value="0:00" placeholder="开始" />
+                    <span class="seal-label">到</span>
+                    <input class="music-clip-input" id="clipEndInput" type="text" value="" placeholder="结束" />
+                </div>
+                <div class="music-toggle-row">
+                    <label class="music-toggle-label"><input type="checkbox" id="toggleTitle" checked />标题</label>
+                    <label class="music-toggle-label"><input type="checkbox" id="toggleArtist" checked />作者</label>
+                    <label class="music-toggle-label"><input type="checkbox" id="toggleAlbum" checked />专辑</label>
+                    <label class="music-toggle-label"><input type="checkbox" id="toggleClipRange" checked />片段</label>
+                </div>
+            </div>
+
+            <div class="music-cover-section">
+                <div class="music-section-label">横幅封面</div>
+                <div class="music-cover-upload">
+                    <img class="music-cover-preview" id="musicCoverPreview" />
+                    <div>
+                        <label class="music-cover-btn">上传封面
+                            <input class="music-upload-input" id="bannerCoverInput" type="file" accept="image/*" />
+                        </label>
+                        <button class="music-cover-btn" id="bannerCoverClearBtn" style="margin-left:8px;">清除</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="music-lyrics-section">
+                <div class="music-section-label">歌词编辑</div>
+                <div class="music-lyrics-hint">格式：[分:秒.毫秒]歌词内容，每行一条</div>
+                <textarea class="music-lyrics-textarea" id="lyricsTextarea" placeholder="[00:19.25]歌词1&#10;[00:23.80]歌词2&#10;[00:28.50]歌词3"></textarea>
+                <div class="music-toggle-row">
+                    <label class="music-toggle-label"><input type="checkbox" id="toggleLyrics" checked />显示歌词</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Panel -->
+    <div class="history-overlay" id="historyOverlay"></div>
+    <div class="history-panel" id="historyPanel">
+        <div class="history-header">
+            <div class="history-title">历史记录</div>
+            <div class="history-actions">
+                <button class="history-btn danger" id="clearHistory">清空</button>
+                <button class="history-btn" id="closeHistory">关闭</button>
+            </div>
+        </div>
+        <div class="history-list" id="historyList"></div>
+    </div>
+
+    <!-- Batch Modal -->
+    <div class="batch-modal" id="batchModal">
+        <div class="batch-overlay" id="batchOverlay"></div>
+        <div class="batch-content">
+            <div class="batch-header">
+                <div class="batch-title">批量导出</div>
+                <div class="batch-close" id="batchClose">×</div>
+            </div>
+            <div class="batch-body">
+                <textarea class="batch-textarea" id="batchTextarea" placeholder="每首诗格式：标题|作者|正文（每句一行）&#10;&#10;示例：&#10;静夜思|李白〔唐代〕|床前明月光&#10;疑是地上霜&#10;举头望明月&#10;低头思故乡"></textarea>
+                <div class="batch-hint">每首诗之间用空行分隔，每行一句诗句</div>
+                <div class="batch-preview" id="batchPreview"></div>
+            </div>
+            <div class="batch-footer">
+                <div class="batch-progress" id="batchProgress"></div>
+                <div class="batch-actions">
+                    <button class="batch-btn" id="batchCancel">取消</button>
+                    <button class="batch-btn primary" id="batchExport">开始导出</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editor Modal -->
+    <div class="editor-modal" id="editorModal">
+        <div class="editor-overlay" id="editorOverlay"></div>
+        <div class="editor-content">
+            <div class="editor-header">
+                <div class="editor-header-title">Editor</div>
+                <div class="editor-meta-row">
+                    <input id="editorTitleInput" class="editor-meta-input editor-title-input" type="text" placeholder="标题" />
+                    <input id="editorAuthorInput" class="editor-meta-input editor-author-input" type="text" placeholder="作者" value="默存〔现代〕" />
+                </div>
+                <div class="editor-controls">
+                    <label>字号 <input type="range" id="ctrlFontSize" min="14" max="32" value="20" /><span id="valFontSize">20</span>px</label>
+                    <label>行高 <input type="range" id="ctrlLineHeight" min="30" max="70" value="44" /><span id="valLineHeight">44</span>px</label>
+                </div>
+                <textarea class="editor-textarea" id="editorTextarea" placeholder="输入诗句，每行一句..."></textarea>
+                <div class="editor-seal-row">
+                    <span class="seal-label">印章文字</span>
+                    <input id="editorSealInput" class="seal-input" type="text" placeholder="字" maxlength="4" value="默存印" />
+                </div>
+                <div class="font-zones">
+                    <div class="font-zones-title">四区字体上传</div>
+                    <div class="font-zone-row">
+                        <span class="font-zone-label">标题区</span>
+                        <span class="font-zone-state" id="fontStateTitle">默认字体</span>
+                        <label class="font-upload-btn">上传字体
+                            <input class="font-upload-input" id="fontUploadTitle" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" />
+                        </label>
+                        <button class="font-clear-btn" id="fontClearTitle">重置</button>
+                    </div>
+                    <div class="font-zone-row">
+                        <span class="font-zone-label">作者区</span>
+                        <span class="font-zone-state" id="fontStateAuthor">默认字体</span>
+                        <label class="font-upload-btn">上传字体
+                            <input class="font-upload-input" id="fontUploadAuthor" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" />
+                        </label>
+                        <button class="font-clear-btn" id="fontClearAuthor">重置</button>
+                    </div>
+                    <div class="font-zone-row">
+                        <span class="font-zone-label">诗句区</span>
+                        <span class="font-zone-state" id="fontStateContent">默认字体</span>
+                        <label class="font-upload-btn">上传字体
+                            <input class="font-upload-input" id="fontUploadContent" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" />
+                        </label>
+                        <button class="font-clear-btn" id="fontClearContent">重置</button>
+                    </div>
+                    <div class="font-zone-row">
+                        <span class="font-zone-label">印章区</span>
+                        <span class="font-zone-state" id="fontStateSeal">默认字体</span>
+                        <label class="font-upload-btn">上传字体
+                            <input class="font-upload-input" id="fontUploadSeal" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" />
+                        </label>
+                        <button class="font-clear-btn" id="fontClearSeal">重置</button>
+                    </div>
+                </div>
+                <div class="editor-actions">
+                    <button class="editor-btn" id="copyBtn">复制图片</button>
+                    <button class="editor-btn" id="exportWebmBtn">导出视频</button>
+                    <button class="editor-btn" id="editorCancel">重置</button>
+                    <button class="editor-btn primary" id="editorSave">保存图片</button>
+                </div>
+            </div>
+            <div class="editor-canvas-wrap">
+                <canvas id="editorCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const FONT_ZONE_LABELS = {
+            title: '标题区',
+            author: '作者区',
+            content: '诗句区',
+            seal: '印章区'
+        };
+
+        function buildFontStack(customFamily, fallbackStack) {
+            return customFamily ? `"${customFamily}", ${fallbackStack}` : fallbackStack;
+        }
+
+        function getCardFontStacks() {
+            return {
+                title: buildFontStack(customFonts.title?.family, '"Ma Shan Zheng", "Noto Serif SC", serif'),
+                author: buildFontStack(customFonts.author?.family, '"Noto Serif SC", serif'),
+                contentPrimary: buildFontStack(customFonts.content?.family, '"Ma Shan Zheng", serif'),
+                contentFallback: buildFontStack(customFonts.content?.family, '"SimSun", "STSong", serif'),
+                seal: buildFontStack(customFonts.seal?.family, '"FZXiaoZhuan", "STXiaoZhuan", "Ma Shan Zheng", serif')
+            };
+        }
+
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        function drawTextWithEllipsis(ctx, text, x, y, maxWidth) {
+            const raw = String(text || '');
+            if (!raw) return;
+            if (ctx.measureText(raw).width <= maxWidth) {
+                ctx.fillText(raw, x, y);
+                return;
+            }
+            let clipped = raw;
+            while (clipped.length > 0 && ctx.measureText(`${clipped}…`).width > maxWidth) {
+                clipped = clipped.slice(0, -1);
+            }
+            ctx.fillText(`${clipped}…`, x, y);
+        }
+
+        function drawCard(canvasEl, { title, author, lines, sealChar, fontSize, lineHeight, lyricsElapsed }) {
+            const scale = 2;
+            const fontStacks = getCardFontStacks();
+
+            const tempCanvas = document.createElement('canvas');
+            const tctx = tempCanvas.getContext('2d');
+
+            tctx.font = `${fontSize}px ${fontStacks.contentFallback}`;
+            let maxLineW = 0;
+            for (const line of lines) {
+                const w = tctx.measureText(line).width;
+                if (w > maxLineW) maxLineW = w;
+            }
+            tctx.font = `30px ${fontStacks.title}`;
+            const titleW = tctx.measureText(title).width;
+            const contentW = Math.max(maxLineW, titleW);
+
+            const baseMargin = 45;
+            const sealArea = 90;
+            const margin = Math.max(baseMargin, sealArea / 2);
+            const rawCardW = contentW + margin + sealArea;
+            const actualCardW = Math.max(400, Math.floor(rawCardW));
+
+            const contentCenter = actualCardW / 2 + 10;
+            const cardCenter = actualCardW / 2;
+
+            const totalLineCount = lines.length;
+            const hasMetaBanner = !!(musicState.file && musicState.meta);
+            const bannerWrapH = hasMetaBanner ? 74 : 0;
+            const cardH = 130 + totalLineCount * lineHeight + 50 + bannerWrapH;
+
+            canvasEl.width = actualCardW * scale;
+            canvasEl.height = cardH * scale;
+            const ctx = canvasEl.getContext('2d');
+            ctx.scale(scale, scale);
+
+            ctx.fillStyle = '#ede5d4';
+            roundRect(ctx, 0, 0, actualCardW, cardH, 4);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+            ctx.lineWidth = 1;
+            roundRect(ctx, 0.5, 0.5, actualCardW - 1, cardH - 1, 4);
+            ctx.stroke();
+
+            const dynastyMatch = author.match(/〔([^〕]+)〕/);
+            const dynasty = dynastyMatch ? dynastyMatch[1] : '';
+            if (dynasty) {
+                ctx.fillStyle = '#b84c3e';
+                ctx.font = `10px ${fontStacks.author}`;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.letterSpacing = '2px';
+                ctx.fillText(dynasty, 18, 22);
+            }
+
+            const sealX = actualCardW - 52;
+            const rightEmpty = actualCardW - contentCenter - maxLineW / 2;
+            const sealFits = rightEmpty >= 52;
+            if (sealFits) {
+                ctx.fillStyle = '#b84c3e';
+                roundRect(ctx, sealX, 18, 34, 34, 2);
+                ctx.fill();
+                ctx.fillStyle = '#f5efe2';
+                ctx.font = `17px ${fontStacks.seal}`;
+                ctx.textAlign = 'center';
+
+                const seal = sealChar || (author.match(/^([^〔]+)/) ? author.match(/^([^〔]+)/)[1] : title.charAt(0));
+                const slen = seal.length;
+
+                if (slen === 1) {
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(seal[0], sealX + 17, 35);
+                } else if (slen === 2) {
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(seal[0], sealX + 29, 35);
+                    ctx.fillText(seal[1], sealX + 5, 35);
+                } else if (slen === 3) {
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(seal[0], sealX + 29, 23);
+                    ctx.fillText(seal[1], sealX + 29, 47);
+                    ctx.font = `28px ${fontStacks.seal}`;
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(seal[2], sealX + 5, 35);
+                } else if (slen === 4) {
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(seal[0], sealX + 29, 23);
+                    ctx.fillText(seal[1], sealX + 29, 47);
+                    ctx.fillText(seal[2], sealX + 5, 23);
+                    ctx.fillText(seal[3], sealX + 5, 47);
+                }
+            }
+
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = `30px ${fontStacks.title}`;
+            ctx.textAlign = 'center';
+            ctx.fillText(title, cardCenter, 50);
+
+            ctx.fillStyle = '#5a5a5a';
+            ctx.font = `11px ${fontStacks.author}`;
+            ctx.fillText(author, cardCenter, 90);
+
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cardCenter - 18, 118);
+            ctx.lineTo(cardCenter + 18, 118);
+            ctx.stroke();
+
+            ctx.fillStyle = '#1a1a1a';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const brushFont = `${fontSize}px ${fontStacks.contentPrimary}`;
+            const fallbackFont = `${fontSize}px ${fontStacks.contentFallback}`;
+
+            lines.forEach((line, idx) => {
+                const y = 130 + idx * lineHeight;
+                ctx.font = brushFont;
+                let totalW = 0;
+                const widths = [];
+                for (const ch of line) {
+                    const w = ctx.measureText(ch).width;
+                    widths.push(w);
+                    totalW += w;
+                }
+                let xPos = contentCenter - totalW / 2;
+                for (let i = 0; i < line.length; i++) {
+                    const ch = line[i];
+                    const w = widths[i];
+                    ctx.font = fallbackFont;
+                    const simsunW = ctx.measureText(ch).width;
+                    const ratio = simsunW > 0 ? w / simsunW : 1;
+                    ctx.font = ratio < 0.7 ? fallbackFont : brushFont;
+                    ctx.fillText(ch, xPos, y);
+                    xPos += w;
+                }
+            });
+
+            if (hasMetaBanner) {
+                const meta = musicState.meta || {};
+                const bannerX = 20;
+                const bannerY = 130 + totalLineCount * lineHeight + 16;
+                const bannerW = actualCardW - 40;
+                const bannerH = 50;
+                const coverSize = 34;
+                const coverX = bannerX + 8;
+                const coverY = bannerY + 8;
+                const textStartX = coverX + coverSize + 8;
+                const lyricsAreaWidth = 140;
+                const textMaxW = bannerX + bannerW - 12 - lyricsAreaWidth - textStartX - 8;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.04)';
+                roundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+                ctx.lineWidth = 1;
+                roundRect(ctx, bannerX + 0.5, bannerY + 0.5, bannerW - 1, bannerH - 1, 4);
+                ctx.stroke();
+
+                ctx.fillStyle = 'rgba(0,0,0,0.12)';
+                roundRect(ctx, coverX, coverY, coverSize, coverSize, 3);
+                ctx.fill();
+                if (musicState.coverImage && musicState.coverImage.complete) {
+                    ctx.save();
+                    roundRect(ctx, coverX, coverY, coverSize, coverSize, 3);
+                    ctx.clip();
+                    ctx.drawImage(musicState.coverImage, coverX, coverY, coverSize, coverSize);
+                    ctx.restore();
+                }
+
+                const titleText = musicState.bannerShowTitle ? (meta.title || (musicState.file?.name || '未知标题').replace(/\.[^.]+$/, '')) : '';
+                let subParts = [];
+                if (musicState.bannerShowArtist) subParts.push(meta.artist || '未知作者');
+                if (musicState.bannerShowAlbum && meta.album) subParts.push(meta.album);
+                if (musicState.bannerShowClipRange) {
+                    const clip = getClipRange();
+                    if (clip && clip.endSec > 0) subParts.push(`${clip.startText}/${clip.endText}`);
+                }
+                const subText = subParts.join(' · ');
+
+                ctx.fillStyle = '#1a1a1a';
+                ctx.font = `12px ${fontStacks.author}`;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                if (musicState.bannerShowTitle) {
+                    drawTextWithEllipsis(ctx, titleText, textStartX, bannerY + 10, textMaxW);
+                }
+
+                ctx.fillStyle = '#5a5a5a';
+                ctx.font = `11px ${fontStacks.author}`;
+                drawTextWithEllipsis(ctx, subText, textStartX, bannerY + 28, textMaxW);
+
+                // Lyrics inside banner, right-aligned and vertically centered
+                if (musicState.showLyrics && musicState.parsedLyrics.length > 0) {
+                    const { current, next } = getLyricAtTime(musicState.parsedLyrics, lyricsElapsed || 0);
+                    const lyricsRightX = bannerX + bannerW - 12;
+                    const lyricsTopY = bannerY + 8;
+                    const lyricsWidth = lyricsAreaWidth;
+
+                    // Helper function to draw wrapped lyrics
+                    const drawWrappedLyric = (text, y, maxWidth, lineHeight, color, fontSize) => {
+                        ctx.fillStyle = color;
+                        ctx.font = `${fontSize}px ${fontStacks.author}`;
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'top';
+                        const lines = [];
+                        let currentLine = '';
+                        for (const ch of text) {
+                            const testLine = currentLine + ch;
+                            const w = ctx.measureText(testLine).width;
+                            if (w > maxWidth && currentLine) {
+                                lines.push(currentLine);
+                                currentLine = ch;
+                            } else {
+                                currentLine = testLine;
+                            }
+                        }
+                        if (currentLine) lines.push(currentLine);
+                        lines.forEach((line, i) => {
+                            ctx.fillText(line, lyricsRightX, y + i * lineHeight);
+                        });
+                    };
+
+                    // Draw current lyric (full opacity, no fade)
+                    if (current) {
+                        drawWrappedLyric(current.text, lyricsTopY, lyricsWidth - 10, 16, '#1a1a1a', 12);
+                    }
+
+                    // Draw next lyric (hidden until it becomes current)
+                    if (next && next.time <= (lyricsElapsed || 0)) {
+                        drawWrappedLyric(next.text, lyricsTopY, lyricsWidth - 10, 16, '#5a5a5a', 11);
+                    }
+                }
+            }
+        }
+
+        function smartWrap(rawLines) {
+            const allText = rawLines.join('');
+            const totalChars = allText.length;
+            const punctCount = (allText.match(/[，。、！？；：]/g) || []).length;
+            const minLines = Math.max(1, Math.floor(punctCount / 2));
+
+            if (rawLines.length > minLines) {
+                const paired = [];
+                for (let i = 0; i < rawLines.length; i += 2) {
+                    if (i + 1 < rawLines.length) {
+                        const combined = rawLines[i] + '，' + rawLines[i + 1];
+                        if (combined.length > 20) {
+                            return rawLines;
+                        }
+                        paired.push(combined);
+                    } else {
+                        paired.push(rawLines[i]);
+                    }
+                }
+                if (paired.length >= minLines && paired.every(l => l.length >= 7 && l.length <= 20)) {
+                    return paired;
+                }
+            }
+
+            const targetLines = Math.max(minLines, rawLines.length);
+            const charsPerLine = Math.min(20, Math.max(7, Math.ceil(totalChars / targetLines)));
+
+            const allChars = allText.split('');
+            const newLines = [];
+            let current = '';
+            for (const ch of allChars) {
+                if (current.length >= charsPerLine) {
+                    newLines.push(current);
+                    current = ch;
+                } else {
+                    current += ch;
+                }
+            }
+            if (current) newLines.push(current);
+
+            if (newLines.every(l => l.length >= 7 && l.length <= 20)) {
+                return newLines;
+            }
+            return rawLines;
+        }
+
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        async function copyCanvasToClipboard(canvas) {
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        reject(new Error('Failed to create blob'));
+                        return;
+                    }
+                    try {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({ 'image/png': blob })
+                        ]);
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                }, 'image/png');
+            });
+        }
+
+        function getHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('poemCardHistory') || '[]');
+            } catch {
+                return [];
+            }
+        }
+
+        function saveToHistory(entry) {
+            const history = getHistory();
+            const existing = history.findIndex(h => h.title === entry.title && h.author === entry.author);
+            if (existing !== -1) {
+                history.splice(existing, 1);
+            }
+            history.unshift({ ...entry, savedAt: Date.now() });
+            if (history.length > 20) {
+                history.length = 20;
+            }
+            localStorage.setItem('poemCardHistory', JSON.stringify(history));
+        }
+
+        function removeFromHistory(index) {
+            const history = getHistory();
+            history.splice(index, 1);
+            localStorage.setItem('poemCardHistory', JSON.stringify(history));
+        }
+
+        function clearHistory() {
+            localStorage.removeItem('poemCardHistory');
+        }
+
+        function generateCardFilename(title) {
+            return `EditorPhoto_${title}_${Date.now()}.png`;
+        }
+
+        let editorData = {
+            title: '',
+            author: '默存〔现代〕',
+            lines: [],
+            sealChar: '默存印',
+            fontSize: 20,
+            lineHeight: 44
+        };
+
+        const customFonts = {
+            title: null,
+            author: null,
+            content: null,
+            seal: null
+        };
+
+        const musicState = {
+            file: null,
+            url: '',
+            meta: null,
+            coverImage: null,
+            bannerShowTitle: true,
+            bannerShowArtist: true,
+            bannerShowAlbum: true,
+            bannerShowClipRange: true,
+            showLyrics: true,
+            lyricsText: '',
+            parsedLyrics: []
+        };
+
+        let isRendering = false;
+
+        function showToast(msg, duration = 2000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        function renderEditor(lyricsElapsed) {
+            const title = document.getElementById('editorTitleInput').value || '无题';
+            const author = document.getElementById('editorAuthorInput').value || '佚名';
+            const textarea = document.getElementById('editorTextarea');
+            const lines = textarea.value.split('\n').filter(l => l.trim());
+            const fontSize = parseInt(document.getElementById('ctrlFontSize').value);
+            const lineHeight = parseInt(document.getElementById('ctrlLineHeight').value);
+            const sealChar = document.getElementById('editorSealInput').value;
+
+            editorData = { title, author, lines, sealChar, fontSize, lineHeight };
+            applyBannerEditsFromInputs();
+
+            if (lines.length === 0) {
+                const canvas = document.getElementById('editorCanvas');
+                canvas.width = 400;
+                canvas.height = 200;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ede5d4';
+                ctx.fillRect(0, 0, 400, 200);
+                ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                ctx.font = '14px "Noto Serif SC", serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('输入诗句后预览', 200, 100);
+                return;
+            }
+
+            drawCard(document.getElementById('editorCanvas'), {
+                ...editorData,
+                cardWidth: 0,
+                lyricsElapsed
+            });
+        }
+
+        function openEditor(preset) {
+            if (preset) {
+                document.getElementById('editorTitleInput').value = preset.title || '';
+                document.getElementById('editorAuthorInput').value = preset.author || '默存〔现代〕';
+                document.getElementById('editorTextarea').value = (preset.lines || []).join('\n');
+                document.getElementById('editorSealInput').value = preset.sealChar || '默存印';
+                document.getElementById('ctrlFontSize').value = preset.fontSize || 20;
+                document.getElementById('ctrlLineHeight').value = preset.lineHeight || 44;
+                document.getElementById('valFontSize').textContent = preset.fontSize || 20;
+                document.getElementById('valLineHeight').textContent = preset.lineHeight || 44;
+            } else {
+                document.getElementById('editorTitleInput').value = '';
+                document.getElementById('editorAuthorInput').value = '默存〔现代〕';
+                document.getElementById('editorTextarea').value = '';
+                document.getElementById('editorSealInput').value = '默存印';
+                document.getElementById('ctrlFontSize').value = 20;
+                document.getElementById('ctrlLineHeight').value = 44;
+                document.getElementById('valFontSize').textContent = '20';
+                document.getElementById('valLineHeight').textContent = '44';
+                editorData = { title: '', author: '默存〔现代〕', lines: [], sealChar: '默存印', fontSize: 20, lineHeight: 44 };
+            }
+            renderEditor();
+            document.getElementById('editorModal').classList.add('show');
+        }
+
+        function closeEditor() {
+            openEditor();
+        }
+
+        function updateFontStateText(zone) {
+            const stateEl = document.getElementById(`fontState${zone.charAt(0).toUpperCase()}${zone.slice(1)}`);
+            const fontInfo = customFonts[zone];
+            stateEl.textContent = fontInfo ? fontInfo.sourceName : '默认字体';
+        }
+
+        function cleanupFontResource(zone) {
+            const fontInfo = customFonts[zone];
+            if (!fontInfo) return;
+            if (fontInfo.face) {
+                document.fonts.delete(fontInfo.face);
+            }
+            if (fontInfo.objectUrl) {
+                URL.revokeObjectURL(fontInfo.objectUrl);
+            }
+            customFonts[zone] = null;
+        }
+
+        async function applyZoneFont(zone, file) {
+            if (!file) return;
+            const extOk = /\.(ttf|otf|woff2?|TTF|OTF|WOFF2?)$/.test(file.name);
+            const typeOk = !file.type || file.type.includes('font') || file.type === 'application/octet-stream';
+            if (!extOk && !typeOk) {
+                showToast(`${FONT_ZONE_LABELS[zone]}字体格式不支持`);
+                return;
+            }
+            const objectUrl = URL.createObjectURL(file);
+            const family = `UploadedFont_${zone}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+            try {
+                const face = new FontFace(family, `url("${objectUrl}")`);
+                await face.load();
+                cleanupFontResource(zone);
+                document.fonts.add(face);
+                customFonts[zone] = { sourceName: file.name, objectUrl, family, face };
+                updateFontStateText(zone);
+                renderEditor();
+                showToast(`${FONT_ZONE_LABELS[zone]}字体已加载`);
+            } catch (error) {
+                URL.revokeObjectURL(objectUrl);
+                showToast(`${FONT_ZONE_LABELS[zone]}字体加载失败`);
+            }
+        }
+
+        function clearZoneFont(zone) {
+            cleanupFontResource(zone);
+            updateFontStateText(zone);
+            renderEditor();
+            showToast(`${FONT_ZONE_LABELS[zone]}已恢复默认字体`);
+        }
+
+        function formatSecToClock(rawSec) {
+            const sec = Math.max(0, Math.floor(Number(rawSec) || 0));
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            if (h > 0) {
+                return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }
+            return `${m}:${String(s).padStart(2, '0')}`;
+        }
+
+        function parseClockToSec(inputText) {
+            const raw = (inputText || '').trim();
+            if (!raw) return 0;
+            if (/^\d+(\.\d+)?$/.test(raw)) {
+                return Math.max(0, Number(raw));
+            }
+            const parts = raw.split(':').map(v => v.trim());
+            if (!parts.every(v => /^\d+(\.\d+)?$/.test(v))) {
+                return NaN;
+            }
+            if (parts.length === 2) {
+                return Number(parts[0]) * 60 + Number(parts[1]);
+            }
+            if (parts.length === 3) {
+                return Number(parts[0]) * 3600 + Number(parts[1]) * 60 + Number(parts[2]);
+            }
+            return NaN;
+        }
+
+        function normalizeClipInputsByDuration(durationSec) {
+            const startInput = document.getElementById('clipStartInput');
+            const endInput = document.getElementById('clipEndInput');
+            if (!startInput.value.trim()) {
+                startInput.value = '0:00';
+            }
+            if (durationSec > 0 && !endInput.value.trim()) {
+                endInput.value = formatSecToClock(durationSec);
+            }
+        }
+
+        function getClipRange() {
+            const startInput = document.getElementById('clipStartInput');
+            const endInput = document.getElementById('clipEndInput');
+            const startRaw = (startInput.value || '0:00').trim();
+            const endRaw = (endInput.value || '').trim();
+            const startSec = parseClockToSec(startRaw);
+            const endSec = endRaw ? parseClockToSec(endRaw) : 0;
+            if (!Number.isFinite(startSec) || startSec < 0) {
+                showToast('开始时间格式无效，请使用 1:00 或 00:01:00');
+                return null;
+            }
+            if (endRaw && (!Number.isFinite(endSec) || endSec <= 0)) {
+                showToast('结束时间格式无效，请使用 2:00 或 00:02:00');
+                return null;
+            }
+            if (endSec > 0 && endSec <= startSec) {
+                showToast('结束时间必须大于开始时间');
+                return null;
+            }
+            return {
+                startSec,
+                endSec,
+                startText: startRaw || '0:00',
+                endText: endRaw
+            };
+        }
+
+        function parseLyrics(text) {
+            const lines = text.split('\n');
+            const parsed = [];
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                // Match [mm:ss.xx] or [mm:ss] format
+                const match = trimmed.match(/^\[(\d+):(\d+)(?:\.(\d+))?\]\s*(.*)$/);
+                if (match) {
+                    const m = parseInt(match[1], 10);
+                    const s = parseInt(match[2], 10);
+                    const ms = match[3] ? parseInt(match[3].padEnd(3, '0').slice(0, 3), 10) : 0;
+                    const time = m * 60 + s + ms / 1000;
+                    const lyric = match[4] || '';
+                    if (lyric) {
+                        parsed.push({ time, text: lyric });
+                    }
+                }
+            }
+            parsed.sort((a, b) => a.time - b.time);
+            return parsed;
+        }
+
+        function getLyricAtTime(parsedLyrics, elapsedSec) {
+            let current = null;
+            let next = null;
+            for (let i = 0; i < parsedLyrics.length; i++) {
+                if (parsedLyrics[i].time <= elapsedSec) {
+                    current = parsedLyrics[i];
+                    next = parsedLyrics[i + 1] || null;
+                } else {
+                    break;
+                }
+            }
+            return { current, next };
+        }
+
+        function syncBannerInputsFromMeta() {
+            const titleInput = document.getElementById('bannerTitleInput');
+            const artistInput = document.getElementById('bannerArtistInput');
+            const albumInput = document.getElementById('bannerAlbumInput');
+            const meta = musicState.meta;
+            if (!meta) {
+                titleInput.value = '';
+                artistInput.value = '';
+                albumInput.value = '';
+                return;
+            }
+            titleInput.value = meta.title || '';
+            artistInput.value = meta.artist || '';
+            albumInput.value = meta.album || '';
+        }
+
+        function applyBannerEditsFromInputs() {
+            if (!musicState.meta) return;
+            const titleInput = document.getElementById('bannerTitleInput');
+            const artistInput = document.getElementById('bannerArtistInput');
+            const albumInput = document.getElementById('bannerAlbumInput');
+            musicState.meta.title = (titleInput.value || '').trim();
+            musicState.meta.artist = (artistInput.value || '').trim();
+            musicState.meta.album = (albumInput.value || '').trim();
+        }
+
+        async function setBannerCoverFromDataUrl(dataUrl) {
+            if (!musicState.meta) {
+                musicState.meta = { title: '', artist: '', album: '', durationSec: 0, coverDataUrl: '' };
+            }
+            musicState.meta.coverDataUrl = dataUrl || '';
+            musicState.coverImage = null;
+            if (dataUrl) {
+                const img = new Image();
+                await new Promise((resolve) => {
+                    const done = () => resolve();
+                    img.addEventListener('load', done, { once: true });
+                    img.addEventListener('error', done, { once: true });
+                    img.src = dataUrl;
+                });
+                if (img.complete && img.naturalWidth > 0) {
+                    musicState.coverImage = img;
+                }
+            }
+        }
+
+        function renderMusicMetaBanner() {
+            applyBannerEditsFromInputs();
+        }
+
+        async function readAudioTagInfo(file) {
+            const invoke = window.__TAURI__?.core?.invoke;
+            if (invoke) {
+                const audioBuffer = await file.arrayBuffer();
+                const audioBase64 = arrayBufferToBase64(audioBuffer);
+                try {
+                    const meta = await invoke('inspect_audio_tags', {
+                        audioBase64,
+                        audioExtension: getMusicFileExtension(file)
+                    });
+                    return {
+                        title: meta?.title || '',
+                        artist: meta?.artist || '',
+                        album: meta?.album || '',
+                        durationSec: Number(meta?.durationSec || 0),
+                        coverDataUrl: meta?.coverDataUrl || ''
+                    };
+                } catch {
+                }
+            }
+            const tempUrl = URL.createObjectURL(file);
+            const fallbackDuration = await new Promise((resolve) => {
+                const audio = new Audio(tempUrl);
+                const done = () => {
+                    const d = Number(audio.duration);
+                    resolve(Number.isFinite(d) ? d : 0);
+                };
+                audio.addEventListener('loadedmetadata', done, { once: true });
+                audio.addEventListener('error', () => resolve(0), { once: true });
+            });
+            URL.revokeObjectURL(tempUrl);
+            return {
+                title: file.name.replace(/\.[^.]+$/, ''),
+                artist: '',
+                album: '',
+                durationSec: fallbackDuration,
+                coverDataUrl: ''
+            };
+        }
+
+        async function setMusicFile(file) {
+            if (!file) return;
+            if (file.type && !file.type.startsWith('audio/')) {
+                showToast('请选择音频文件');
+                return;
+            }
+            const preview = document.getElementById('musicPreview');
+            if (musicState.url) {
+                URL.revokeObjectURL(musicState.url);
+            }
+            musicState.file = file;
+            musicState.url = URL.createObjectURL(file);
+            preview.src = musicState.url;
+            preview.load();
+            musicState.meta = await readAudioTagInfo(file);
+            musicState.coverImage = null;
+            if (musicState.meta?.coverDataUrl) {
+                await setBannerCoverFromDataUrl(musicState.meta.coverDataUrl);
+            }
+            syncBannerInputsFromMeta();
+            normalizeClipInputsByDuration(musicState.meta?.durationSec || 0);
+            updateMusicPanelUI();
+            renderEditor();
+        }
+
+        function clearMusicFile(showMessage = true) {
+            const preview = document.getElementById('musicPreview');
+            if (musicState.url) {
+                URL.revokeObjectURL(musicState.url);
+            }
+            musicState.file = null;
+            musicState.url = '';
+            musicState.meta = null;
+            musicState.coverImage = null;
+            preview.pause();
+            preview.removeAttribute('src');
+            preview.load();
+            document.getElementById('clipStartInput').value = '0:00';
+            document.getElementById('clipEndInput').value = '';
+            syncBannerInputsFromMeta();
+            const coverInput = document.getElementById('bannerCoverInput');
+            if (coverInput) {
+                coverInput.value = '';
+            }
+            updateMusicPanelUI();
+            renderEditor();
+            if (showMessage) {
+                showToast('已清除背景音乐');
+            }
+        }
+
+        function getMusicFileExtension(file) {
+            const byName = (file?.name || '').split('.').pop()?.trim().toLowerCase() || '';
+            if (byName && /^[a-z0-9]+$/.test(byName)) {
+                return byName;
+            }
+            const byType = (file?.type || '').split('/').pop()?.trim().toLowerCase() || '';
+            if (byType && /^[a-z0-9]+$/.test(byType)) {
+                return byType;
+            }
+            return 'mp3';
+        }
+
+        function arrayBufferToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            const chunkSize = 0x8000;
+            let binary = '';
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                const chunk = bytes.subarray(i, i + chunkSize);
+                binary += String.fromCharCode(...chunk);
+            }
+            return btoa(binary);
+        }
+
+        async function fileToDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(new Error('读取文件失败'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function exportWithFfmpegOffline() {
+            const invoke = window.__TAURI__?.core?.invoke;
+            if (!invoke) {
+                return null;
+            }
+            if (!musicState.file) {
+                showToast('请先上传背景音乐');
+                return false;
+            }
+            const canvas = document.getElementById('editorCanvas');
+            const audioBuffer = await musicState.file.arrayBuffer();
+            const audioBase64 = arrayBufferToBase64(audioBuffer);
+            try {
+                const clipRange = getClipRange();
+                if (!clipRange) {
+                    return false;
+                }
+                const audioDuration = musicState.meta?.duration_sec || 0;
+                const startSec = clipRange.startSec;
+                const endSec = clipRange.endSec > 0 ? clipRange.endSec : audioDuration;
+                const totalDuration = endSec - startSec + 1;
+                if (totalDuration <= 0) {
+                    showToast('剪辑时长无效');
+                    return false;
+                }
+                // Capture frames at each second
+                const frames = [];
+                const startInput = document.getElementById('clipStartInput');
+                const endInput = document.getElementById('clipEndInput');
+                const savedStart = startInput.value;
+                const savedEnd = endInput.value;
+                for (let elapsed = 0; elapsed < totalDuration; elapsed++) {
+                    const m = Math.floor(elapsed / 60);
+                    const s = elapsed % 60;
+                    startInput.value = `${m}:${s.toString().padStart(2, '0')}`;
+                    renderEditor(startSec + elapsed);
+                    frames.push(canvas.toDataURL('image/png'));
+                }
+                // Restore original values
+                startInput.value = savedStart;
+                endInput.value = savedEnd;
+                renderEditor();
+                const outputPath = await invoke('export_video_ffmpeg', {
+                    imageDataUrls: frames,
+                    audioBase64,
+                    audioExtension: getMusicFileExtension(musicState.file),
+                    title: editorData.title || '无题',
+                    startSec: clipRange.startText,
+                    endSec: clipRange.endText
+                });
+                return outputPath;
+            } catch (error) {
+                const msg = typeof error === 'string' ? error : (error?.message || JSON.stringify(error));
+                throw new Error(msg || 'FFmpeg离线导出失败');
+            }
+        }
+
+        async function exportVideo() {
+            if (isRendering) return;
+            if (editorData.lines.length === 0) {
+                showToast('请先输入诗句');
+                return;
+            }
+            const exportBtn = document.getElementById('exportWebmBtn');
+            const oldText = exportBtn.textContent;
+            exportBtn.disabled = true;
+            exportBtn.textContent = '导出中...';
+            isRendering = true;
+            try {
+                const outputPath = await exportWithFfmpegOffline();
+                if (typeof outputPath === 'string' && outputPath) {
+                    showToast(`FFmpeg离线导出成功：${outputPath}`, 3200);
+                    saveToHistory(editorData);
+                    return;
+                }
+            } catch (error) {
+                const message = (error && error.message) ? error.message : '未知错误';
+                showToast(`导出失败：${message.slice(0, 80)}`, 3600);
+            } finally {
+                exportBtn.disabled = false;
+                exportBtn.textContent = oldText;
+                isRendering = false;
+            }
+        }
+
+        function saveCard() {
+            if (editorData.lines.length === 0) {
+                showToast('请先输入诗句');
+                return;
+            }
+            const canvas = document.getElementById('editorCanvas');
+            downloadCanvas(canvas, generateCardFilename(editorData.title));
+            saveToHistory(editorData);
+            showToast('已保存');
+            closeEditor();
+        }
+
+        async function copyCard() {
+            if (editorData.lines.length === 0) {
+                showToast('请先输入诗句');
+                return;
+            }
+            const canvas = document.getElementById('editorCanvas');
+            try {
+                await copyCanvasToClipboard(canvas);
+                saveToHistory(editorData);
+                showToast('已复制到剪贴板');
+            } catch (e) {
+                showToast('复制失败，请检查浏览器权限');
+            }
+        }
+
+        // History
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            const history = getHistory();
+            if (history.length === 0) {
+                list.innerHTML = '<div class="history-empty">暂无历史记录</div>';
+                return;
+            }
+            list.innerHTML = history.map((item, idx) => `
+                <div class="history-item" data-idx="${idx}">
+                    <div class="history-item-left">
+                        <div class="history-item-title">${item.title}</div>
+                        <div class="history-item-author">${item.author}</div>
+                        <div class="history-item-preview">${(item.lines || []).join(' ').substring(0, 30)}...</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:4px;">
+                        <span class="history-item-time">${formatTime(item.savedAt)}</span>
+                        <span class="history-item-delete" data-del="${idx}">×</span>
+                    </div>
+                </div>
+            `).join('');
+
+            list.querySelectorAll('.history-item').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    if (e.target.dataset.del !== undefined) return;
+                    const idx = parseInt(el.dataset.idx);
+                    const item = getHistory()[idx];
+                    if (item) {
+                        openEditor(item);
+                        toggleHistory(false);
+                    }
+                });
+            });
+
+            list.querySelectorAll('.history-item-delete').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(el.dataset.del);
+                    removeFromHistory(idx);
+                    renderHistory();
+                });
+            });
+        }
+
+        function formatTime(ts) {
+            const d = new Date(ts);
+            const m = d.getMonth() + 1;
+            const day = d.getDate();
+            const h = d.getHours().toString().padStart(2, '0');
+            const min = d.getMinutes().toString().padStart(2, '0');
+            return `${m}/${day} ${h}:${min}`;
+        }
+
+        function toggleHistory(show) {
+            if (show === undefined) show = !document.getElementById('historyPanel').classList.contains('show');
+            document.getElementById('historyPanel').classList.toggle('show', show);
+            document.getElementById('historyOverlay').classList.toggle('show', show);
+            if (show) renderHistory();
+        }
+
+        function toggleMusic(show) {
+            if (show === undefined) show = !document.getElementById('musicPanel').classList.contains('show');
+            document.getElementById('musicPanel').classList.toggle('show', show);
+            if (show) updateMusicPanelUI();
+        }
+
+        function updateMusicPanelUI() {
+            const hasFile = !!(musicState.file && musicState.url);
+            const meta = musicState.meta || {};
+
+            // Update current file display
+            const currentFileEl = document.getElementById('musicCurrentFile');
+            const previewPlayerEl = document.getElementById('musicPreviewPlayer');
+            const uploadZoneEl = document.getElementById('musicUploadZone');
+
+            if (hasFile) {
+                currentFileEl.style.display = 'flex';
+                previewPlayerEl.style.display = 'block';
+                uploadZoneEl.style.display = 'none';
+
+                document.getElementById('musicCurrentTitle').textContent =
+                    meta.title || musicState.file.name.replace(/\.[^.]+$/, '');
+                document.getElementById('musicCurrentMeta').textContent =
+                    [meta.artist, meta.album].filter(Boolean).join(' · ') || '未知作者';
+                document.getElementById('musicCurrentDuration').textContent =
+                    meta.durationSec ? formatDuration(meta.durationSec) : '';
+
+                const coverEl = document.getElementById('musicCurrentCover');
+                if (meta.coverDataUrl) {
+                    coverEl.src = meta.coverDataUrl;
+                    coverEl.style.display = 'block';
+                } else {
+                    coverEl.style.display = 'none';
+                }
+
+                // Update banner inputs
+                document.getElementById('bannerTitleInput').value = meta.title || '';
+                document.getElementById('bannerArtistInput').value = meta.artist || '';
+                document.getElementById('bannerAlbumInput').value = meta.album || '';
+            } else {
+                currentFileEl.style.display = 'none';
+                previewPlayerEl.style.display = 'none';
+                uploadZoneEl.style.display = 'block';
+            }
+
+            // Update cover preview
+            const coverPreviewEl = document.getElementById('musicCoverPreview');
+            if (musicState.coverImage && musicState.coverImage.complete) {
+                coverPreviewEl.src = musicState.coverImage.src;
+                coverPreviewEl.style.display = 'block';
+            } else if (meta.coverDataUrl) {
+                coverPreviewEl.src = meta.coverDataUrl;
+                coverPreviewEl.style.display = 'block';
+            } else {
+                coverPreviewEl.style.display = 'none';
+            }
+        }
+
+        function formatDuration(sec) {
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // Batch Export
+        function parseBatchText(text) {
+            const poems = [];
+            const blocks = text.trim().split(/\n{2,}/);
+            for (const block of blocks) {
+                const lines = block.trim().split('\n').filter(l => l.trim());
+                if (lines.length < 2) continue;
+                const firstLine = lines[0];
+                const sepIndex = firstLine.indexOf('|');
+                if (sepIndex === -1) continue;
+                const title = firstLine.substring(0, sepIndex).trim();
+                const rest = firstLine.substring(sepIndex + 1).trim();
+                const authorSep = rest.indexOf('|');
+                let author, contentLines;
+                if (authorSep === -1) {
+                    author = rest;
+                    contentLines = lines.slice(1);
+                } else {
+                    author = rest.substring(0, authorSep).trim();
+                    contentLines = [rest.substring(authorSep + 1).trim(), ...lines.slice(1)];
+                }
+                if (!title || !author || contentLines.length === 0) continue;
+                poems.push({ title, author, lines: contentLines });
+            }
+            return poems;
+        }
+
+        function renderBatchPreview() {
+            const text = document.getElementById('batchTextarea').value;
+            const poems = parseBatchText(text);
+            const preview = document.getElementById('batchPreview');
+            if (poems.length === 0) {
+                preview.innerHTML = '<div style="font-size:12px;color:var(--ink-light);text-align:center;padding:10px;">输入格式正确后将在这里预览</div>';
+                return;
+            }
+            preview.innerHTML = poems.map((p, i) => `
+                <div class="batch-preview-item">
+                    <span class="idx">${i + 1}.</span>
+                    <span class="title">${p.title}</span>
+                    <span class="author">${p.author}</span>
+                </div>
+            `).join('');
+        }
+
+        async function doBatchExport() {
+            const poems = parseBatchText(document.getElementById('batchTextarea').value);
+            if (poems.length === 0) {
+                showToast('请输入有效的诗词数据');
+                return;
+            }
+
+            const btn = document.getElementById('batchExport');
+            const progress = document.getElementById('batchProgress');
+            btn.disabled = true;
+            btn.textContent = '导出中...';
+
+            for (let i = 0; i < poems.length; i++) {
+                progress.textContent = `正在导出 ${i + 1} / ${poems.length}`;
+                const p = poems[i];
+                const layout = {
+                    fontSize: 20,
+                    lineHeight: 44
+                };
+                const canvas = document.createElement('canvas');
+                const sealChar = p.author.match(/^([^〔]+)/) ? p.author.match(/^([^〔]+)/)[1] : p.title.charAt(0);
+                drawCard(canvas, { ...p, sealChar, fontSize: layout.fontSize, lineHeight: layout.lineHeight });
+                downloadCanvas(canvas, generateCardFilename(p.title));
+                if (i < poems.length - 1) {
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            }
+
+            progress.textContent = '';
+            btn.disabled = false;
+            btn.textContent = '开始导出';
+            showToast(`已导出 ${poems.length} 张卡片`);
+            toggleBatch(false);
+        }
+
+        function toggleBatch(show) {
+            if (show === undefined) show = !document.getElementById('batchModal').classList.contains('show');
+            document.getElementById('batchModal').classList.toggle('show', show);
+            if (!show) {
+                document.getElementById('batchTextarea').value = '';
+                document.getElementById('batchPreview').innerHTML = '';
+                document.getElementById('batchProgress').textContent = '';
+            }
+        }
+
+        // Event Listeners
+        const openEditorBtn = document.getElementById('openEditor');
+        if (openEditorBtn) {
+            openEditorBtn.addEventListener('click', () => openEditor());
+        }
+        const editorOverlay = document.getElementById('editorOverlay');
+        if (editorOverlay) {
+            editorOverlay.addEventListener('click', closeEditor);
+        }
+        document.getElementById('editorCancel').addEventListener('click', closeEditor);
+        document.getElementById('editorSave').addEventListener('click', saveCard);
+        document.getElementById('copyBtn').addEventListener('click', copyCard);
+        document.getElementById('exportWebmBtn').addEventListener('click', exportVideo);
+
+        document.getElementById('editorTextarea').addEventListener('input', renderEditor);
+        document.getElementById('editorTitleInput').addEventListener('input', renderEditor);
+        document.getElementById('editorAuthorInput').addEventListener('input', renderEditor);
+        document.getElementById('editorSealInput').addEventListener('input', renderEditor);
+
+        ['ctrlFontSize', 'ctrlLineHeight'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                const valId = 'val' + id.charAt(4).toUpperCase() + id.slice(5);
+                document.getElementById(valId).textContent = document.getElementById(id).value;
+                renderEditor();
+            });
+        });
+
+        document.getElementById('historyBtn').addEventListener('click', () => toggleHistory(true));
+        document.getElementById('closeHistory').addEventListener('click', () => toggleHistory(false));
+        document.getElementById('historyOverlay').addEventListener('click', () => toggleHistory(false));
+        document.getElementById('clearHistory').addEventListener('click', () => {
+            if (confirm('确定清空所有历史记录？')) {
+                clearHistory();
+                renderHistory();
+            }
+        });
+
+        // Music Panel
+        document.getElementById('musicBtn').addEventListener('click', () => toggleMusic(true));
+        document.getElementById('closeMusic').addEventListener('click', () => toggleMusic(false));
+
+        // Music upload zone drag & drop
+        const musicUploadZone = document.getElementById('musicUploadZone');
+        musicUploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            musicUploadZone.classList.add('dragover');
+        });
+        musicUploadZone.addEventListener('dragleave', () => {
+            musicUploadZone.classList.remove('dragover');
+        });
+        musicUploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            musicUploadZone.classList.remove('dragover');
+            const [file] = e.dataTransfer.files || [];
+            if (file && file.type.startsWith('audio/')) {
+                setMusicFile(file);
+            }
+        });
+        musicUploadZone.addEventListener('click', () => {
+            document.getElementById('musicUploadInput').click();
+        });
+
+        document.getElementById('musicRemoveBtn').addEventListener('click', () => clearMusicFile());
+
+        document.getElementById('bannerCoverInput').addEventListener('change', async (event) => {
+            const [file] = event.target.files || [];
+            if (file) {
+                await setBannerCoverFromFile(file);
+                updateMusicPanelUI();
+            }
+            event.target.value = '';
+        });
+        document.getElementById('bannerCoverClearBtn').addEventListener('click', () => {
+            musicState.coverImage = null;
+            musicState.meta = musicState.meta || {};
+            musicState.meta.coverDataUrl = '';
+            updateMusicPanelUI();
+        });
+
+        const batchBtn = document.getElementById('batchBtn');
+        if (batchBtn) {
+            batchBtn.addEventListener('click', () => toggleBatch(true));
+        }
+        document.getElementById('batchClose').addEventListener('click', () => toggleBatch(false));
+        document.getElementById('batchOverlay').addEventListener('click', () => toggleBatch(false));
+        document.getElementById('batchCancel').addEventListener('click', () => toggleBatch(false));
+        document.getElementById('batchExport').addEventListener('click', doBatchExport);
+        document.getElementById('batchTextarea').addEventListener('input', renderBatchPreview);
+
+        ['title', 'author', 'content', 'seal'].forEach(zone => {
+            const cap = zone.charAt(0).toUpperCase() + zone.slice(1);
+            document.getElementById(`fontUpload${cap}`).addEventListener('change', (event) => {
+                const [file] = event.target.files || [];
+                applyZoneFont(zone, file);
+                event.target.value = '';
+            });
+            document.getElementById(`fontClear${cap}`).addEventListener('click', () => clearZoneFont(zone));
+            updateFontStateText(zone);
+        });
+
+        document.getElementById('musicUploadInput').addEventListener('change', (event) => {
+            const [file] = event.target.files || [];
+            if (file) {
+                setMusicFile(file);
+                event.target.value = '';
+            }
+        });
+        document.getElementById('musicPreview').addEventListener('loadeddata', () => {
+            if (musicState.url) {
+                const d = Number(document.getElementById('musicPreview').duration);
+                if (Number.isFinite(d) && d > 0) {
+                    if (!musicState.meta) {
+                        musicState.meta = { title: '', artist: '', album: '', durationSec: d, coverDataUrl: '' };
+                        syncBannerInputsFromMeta();
+                    } else if (!musicState.meta.durationSec) {
+                        musicState.meta.durationSec = d;
+                    }
+                    normalizeClipInputsByDuration(d);
+                    updateMusicPanelUI();
+                    renderEditor();
+                }
+                showToast('音乐已加载，可先预览再导出');
+            }
+        });
+        document.getElementById('musicPreview').addEventListener('play', () => {
+            // Reset start to 0:00 when playback starts fresh
+            document.getElementById('clipStartInput').value = '0:00';
+        });
+        document.getElementById('musicPreview').addEventListener('error', () => {
+            if (!musicState.url) return;
+            clearMusicFile(false);
+            showToast('音乐文件无效或已损坏');
+        });
+        document.getElementById('musicPreview').addEventListener('timeupdate', () => {
+            const preview = document.getElementById('musicPreview');
+            const currentTime = preview.currentTime;
+            if (Number.isFinite(currentTime) && currentTime > 0) {
+                const startInput = document.getElementById('clipStartInput');
+                const endInput = document.getElementById('clipEndInput');
+                const endRaw = endInput.value.trim();
+                const endSec = endRaw ? parseClockToSec(endRaw) : 0;
+                const currentStartSec = parseClockToSec(startInput.value);
+                // Update start to track current time if within bounds
+                if ((!endRaw || currentTime < endSec) && currentTime !== currentStartSec) {
+                    const m = Math.floor(currentTime / 60);
+                    const s = Math.floor(currentTime % 60);
+                    startInput.value = `${m}:${s.toString().padStart(2, '0')}`;
+                }
+            }
+        });
+        ['bannerTitleInput', 'bannerArtistInput', 'bannerAlbumInput'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                renderMusicMetaBanner();
+                renderEditor();
+            });
+        });
+        document.getElementById('bannerCoverInput').addEventListener('change', async (event) => {
+            const [file] = event.target.files || [];
+            if (!file) return;
+            if (file.type && !file.type.startsWith('image/')) {
+                showToast('请选择图片文件作为封面');
+                event.target.value = '';
+                return;
+            }
+            try {
+                const dataUrl = await fileToDataUrl(file);
+                await setBannerCoverFromDataUrl(dataUrl);
+                renderEditor();
+                showToast('横幅封面已更新');
+            } catch {
+                showToast('封面读取失败');
+            } finally {
+                event.target.value = '';
+            }
+        });
+        document.getElementById('bannerCoverClearBtn').addEventListener('click', async () => {
+            await setBannerCoverFromDataUrl('');
+            renderEditor();
+            showToast('已清除横幅封面');
+        });
+        ['toggleTitle', 'toggleArtist', 'toggleAlbum', 'toggleClipRange'].forEach(id => {
+            document.getElementById(id).addEventListener('change', (e) => {
+                const key = 'bannerShow' + id.replace('toggle', '').replace(/^(.)/, (c) => c.toUpperCase());
+                musicState[key] = e.target.checked;
+                renderEditor();
+            });
+        });
+        document.getElementById('lyricsTextarea').addEventListener('input', (e) => {
+            musicState.lyricsText = e.target.value;
+            musicState.parsedLyrics = parseLyrics(e.target.value);
+            renderEditor();
+        });
+        document.getElementById('toggleLyrics').addEventListener('change', (e) => {
+            musicState.showLyrics = e.target.checked;
+            renderEditor();
+        });
+
+        openEditor();
+    </script>
+</body>
+</html>
