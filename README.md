@@ -57,6 +57,10 @@ web/
 
 首次使用会导出到 `/桌面/Editor/图片/` 和 `/桌面/Editor/视频/`。用户可在应用内通过"导出设置"面板自定义导出根目录（会在其下创建 `Editor` 子文件夹）。
 
+## 下载安装
+
+Windows 安装包：https://github.com/bill756/Editor/releases/tag/%E5%AE%89%E8%A3%85%E5%8C%85
+
 ## 构建需求
 
 - Node.js
