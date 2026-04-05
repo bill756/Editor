@@ -9,6 +9,7 @@ use base64::Engine;
 use lofty::prelude::{ItemKey, *};
 use lofty::file::AudioFile;
 use serde::Serialize;
+use tauri_plugin_dialog::DialogExt;
 
 fn now_millis() -> u128 {
     SystemTime::now()
@@ -239,6 +240,7 @@ fn export_video_ffmpeg(
     _total_duration: f64,
     frame_data_urls: Vec<String>,
     fps: u32,
+    export_root: Option<String>,
 ) -> Result<String, String> {
     let _media_items: Vec<serde_json::Value> = serde_json::from_str(&media_items_json)
         .map_err(|e| format!("媒体数据解析失败: {e}"))?;
@@ -356,7 +358,7 @@ fn export_video_ffmpeg(
             .map_err(|e| format!("重命名输出文件失败: {e}"))?;
     }
 
-    let out_dir = get_editor_export_dir("视频")?;
+    let out_dir = get_editor_export_dir("视频", export_root.as_deref())?;
     let out_name = format!("EditorVideo_{}_{}.mp4", sanitize_filename(&title), now_millis());
     let out_path = out_dir.join(&out_name);
     fs::copy(&final_path, &out_path).map_err(|e| format!("复制输出文件失败: {e}"))?;
@@ -365,10 +367,13 @@ fn export_video_ffmpeg(
     Ok(out_path.to_string_lossy().to_string())
 }
 
-fn get_editor_export_dir(subdir: &str) -> Result<PathBuf, String> {
-    let desktop = dirs::desktop_dir()
-        .ok_or_else(|| "无法找到桌面目录".to_string())?;
-    let export_dir = desktop.join("Editor").join(subdir);
+fn get_editor_export_dir(subdir: &str, export_root: Option<&str>) -> Result<PathBuf, String> {
+    let root: PathBuf = match export_root {
+        Some(r) => PathBuf::from(r),
+        None => dirs::desktop_dir()
+            .ok_or_else(|| "无法找到桌面目录".to_string())?,
+    };
+    let export_dir = root.join("Editor").join(subdir);
     if !export_dir.exists() {
         fs::create_dir_all(&export_dir).map_err(|e| format!("创建导出目录失败: {}", e))?;
     }
@@ -376,8 +381,8 @@ fn get_editor_export_dir(subdir: &str) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-fn save_image(image_data_url: String, filename: String) -> Result<String, String> {
-    let out_dir = get_editor_export_dir("图片")?;
+fn save_image(image_data_url: String, filename: String, export_root: Option<String>) -> Result<String, String> {
+    let out_dir = get_editor_export_dir("图片", export_root.as_deref())?;
     let out_path = out_dir.join(&filename);
     let b64 = image_data_url
         .split_once(',')
@@ -403,9 +408,23 @@ fn run_ffmpeg(args: &[String]) -> Result<String, String> {
     }
 }
 
+/// 打开目录选择对话框，返回用户选择的目录路径
+#[tauri::command]
+async fn select_export_dir(app: tauri::AppHandle) -> Result<String, String> {
+    let folder = app
+        .dialog()
+        .file()
+        .blocking_pick_folder();
+    match folder {
+        Some(path) => Ok(path.to_string()),
+        None => Err("未选择目录".to_string()),
+    }
+}
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![export_video_ffmpeg, inspect_audio_tags, save_image])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![export_video_ffmpeg, inspect_audio_tags, save_image, select_export_dir])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

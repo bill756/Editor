@@ -601,6 +601,27 @@
             margin-bottom: 24px;
         }
 
+        .music-export-section {
+            margin-bottom: 24px;
+        }
+
+        .music-export-path-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        .music-export-path {
+            color: var(--ink-light);
+            font-family: monospace;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .music-lyrics-hint {
             font-size: 11px;
             color: var(--ink-light);
@@ -1561,6 +1582,15 @@
                     <label class="music-toggle-label"><input type="checkbox" id="toggleLyrics" checked />显示歌词</label>
                 </div>
             </div>
+
+            <div class="music-export-section">
+                <div class="music-section-label">导出设置</div>
+                <div class="music-export-path-row">
+                    <span class="seal-label">目录</span>
+                    <span class="music-export-path" id="exportPathDisplay">/桌面/Editor</span>
+                </div>
+                <button class="music-cover-btn" id="selectExportDirBtn">选择导出位置</button>
+            </div>
         </div>
     </div>
 
@@ -2093,8 +2123,12 @@
             const invoke = window.__TAURI__?.core?.invoke;
             const dataUrl = canvas.toDataURL('image/png');
             if (invoke) {
-                // Use Rust backend to save to /桌面/Editor/图片/
-                invoke('save_image', { imageDataUrl: dataUrl, filename }).then((path) => {
+                // Use Rust backend to save to /桌面/Editor/图片/ (or custom root)
+                invoke('save_image', {
+                    imageDataUrl: dataUrl,
+                    filename,
+                    export_root: getExportRoot()
+                }).then((path) => {
                     if (path) showToast(`已保存到: ${path}`);
                 }).catch(() => {
                     // Fallback to browser download
@@ -2195,6 +2229,23 @@
             lyricsText: '',
             parsedLyrics: []
         };
+
+        // 导出根目录，null表示使用默认桌面路径
+        let exportRootPath = localStorage.getItem('exportRootPath') || null;
+
+        function updateExportPathDisplay() {
+            const el = document.getElementById('exportPathDisplay');
+            if (el) {
+                el.textContent = exportRootPath ? `${exportRootPath}/Editor` : '/桌面/Editor';
+            }
+        }
+
+        function getExportRoot() {
+            return exportRootPath;
+        }
+
+        // 初始化导出路径显示
+        updateExportPathDisplay();
 
         const mediaState = {
             items: [],
@@ -2894,7 +2945,8 @@
                     endSec: clipRange ? clipRange.endText : '',
                     totalDuration: totalDuration,
                     frameDataUrls: frameDataUrls,
-                    fps: fps
+                    fps: fps,
+                    export_root: getExportRoot()
                 });
                 return outputPath;
             } catch (error) {
@@ -3362,6 +3414,24 @@
             await setBannerCoverFromDataUrl('');
             renderEditor();
             showToast('已清除横幅封面');
+        });
+        document.getElementById('selectExportDirBtn').addEventListener('click', async () => {
+            const invoke = window.__TAURI__?.core?.invoke;
+            if (!invoke) {
+                showToast('仅支持桌面版本');
+                return;
+            }
+            try {
+                const selected = await invoke('select_export_dir');
+                if (selected) {
+                    exportRootPath = selected;
+                    localStorage.setItem('exportRootPath', selected);
+                    updateExportPathDisplay();
+                    showToast(`导出位置已设置`);
+                }
+            } catch (e) {
+                showToast('选择目录失败');
+            }
         });
         ['toggleTitle', 'toggleArtist', 'toggleAlbum', 'toggleClipRange'].forEach(id => {
             document.getElementById(id).addEventListener('change', (e) => {
