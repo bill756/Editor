@@ -59,7 +59,7 @@ web/
 
 ## 下载安装
 
-Windows 安装包：https://github.com/bill756/Editor/releases/tag/%E5%AE%89%E8%A3%85%E5%8C%85
+Windows 安装包：[Github releases](https://github.com/bill756/Editor/releases/tag/%E5%AE%89%E8%A3%85%E5%8C%85)
 
 ## 构建需求
 
