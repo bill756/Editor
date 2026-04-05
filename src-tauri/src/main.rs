@@ -356,18 +356,37 @@ fn export_video_ffmpeg(
             .map_err(|e| format!("重命名输出文件失败: {e}"))?;
     }
 
-    let out_dir = dirs::download_dir()
-        .or_else(|| dirs::desktop_dir())
-        .or_else(|| std::env::current_dir().ok())
-        .ok_or_else(|| "无法确定导出目录".to_string())?;
-    if !out_dir.exists() {
-        fs::create_dir_all(&out_dir).map_err(|e| format!("创建导出目录失败: {e}"))?;
-    }
-    let out_name = format!("古诗视频_{}_{}.mp4", sanitize_filename(&title), now_millis());
+    let out_dir = get_editor_export_dir("视频")?;
+    let out_name = format!("EditorVideo_{}_{}.mp4", sanitize_filename(&title), now_millis());
     let out_path = out_dir.join(&out_name);
     fs::copy(&final_path, &out_path).map_err(|e| format!("复制输出文件失败: {e}"))?;
 
     let _ = fs::remove_dir_all(&work_dir);
+    Ok(out_path.to_string_lossy().to_string())
+}
+
+fn get_editor_export_dir(subdir: &str) -> Result<PathBuf, String> {
+    let desktop = dirs::desktop_dir()
+        .ok_or_else(|| "无法找到桌面目录".to_string())?;
+    let export_dir = desktop.join("Editor").join(subdir);
+    if !export_dir.exists() {
+        fs::create_dir_all(&export_dir).map_err(|e| format!("创建导出目录失败: {}", e))?;
+    }
+    Ok(export_dir)
+}
+
+#[tauri::command]
+fn save_image(image_data_url: String, filename: String) -> Result<String, String> {
+    let out_dir = get_editor_export_dir("图片")?;
+    let out_path = out_dir.join(&filename);
+    let b64 = image_data_url
+        .split_once(',')
+        .map(|(_, b)| b)
+        .unwrap_or(&image_data_url);
+    let data = base64::engine::general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|_| "图片base64解码失败".to_string())?;
+    fs::write(&out_path, &data).map_err(|e| format!("保存图片失败: {}", e))?;
     Ok(out_path.to_string_lossy().to_string())
 }
 
@@ -386,7 +405,7 @@ fn run_ffmpeg(args: &[String]) -> Result<String, String> {
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![export_video_ffmpeg, inspect_audio_tags])
+        .invoke_handler(tauri::generate_handler![export_video_ffmpeg, inspect_audio_tags, save_image])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

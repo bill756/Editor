@@ -2090,9 +2090,25 @@
         }
 
         function downloadCanvas(canvas, filename) {
+            const invoke = window.__TAURI__?.core?.invoke;
+            const dataUrl = canvas.toDataURL('image/png');
+            if (invoke) {
+                // Use Rust backend to save to /桌面/Editor/图片/
+                invoke('save_image', { imageDataUrl: dataUrl, filename }).then((path) => {
+                    if (path) showToast(`已保存到: ${path}`);
+                }).catch(() => {
+                    // Fallback to browser download
+                    fallbackDownload(dataUrl, filename);
+                });
+            } else {
+                fallbackDownload(dataUrl, filename);
+            }
+        }
+
+        function fallbackDownload(dataUrl, filename) {
             const link = document.createElement('a');
             link.download = filename;
-            link.href = canvas.toDataURL('image/png');
+            link.href = dataUrl;
             link.click();
         }
 
